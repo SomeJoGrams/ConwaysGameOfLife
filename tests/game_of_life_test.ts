@@ -54,5 +54,9 @@ describe("gamefield representation", () => {
 
     })
 
+    test("Negative modulo", () => {
+        let negativeVal = -1002;
+        expect(negativeVal % 25).toBe(-2); // TODO do with conway field
+    })
 
 });
