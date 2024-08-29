@@ -1,5 +1,7 @@
 import * as _ from 'lodash';
-import { ConwayGame, ConwayGameFactory, DEFAULTGAMERULE, ConwayHTMLDisplayer } from "./game_of_life";
+import { ConwayGame, ConwayGameFactory, DEFAULTGAMERULE, ConwayHTMLDisplayer } from "./game_of_life_default";
+import printMe from './print'; // for testing webpck
+
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -7,14 +9,14 @@ function sleep(ms: number) {
 
 async function main() {
     let conwayGameFactory = new ConwayGameFactory(500, 500, DEFAULTGAMERULE);
-    let currentConwayGame: ConwayGame | null = conwayGameFactory.circle(100);
+    let currentConwayGame: ConwayGame | null = conwayGameFactory.centeredfPentomino();
     if (currentConwayGame == null) {
         return;
     }
-    const field_drawer: ConwayHTMLDisplayer = new ConwayHTMLDisplayer("100%", "100%");
+    const field_drawer: ConwayHTMLDisplayer = new ConwayHTMLDisplayer("100%", "100%", 500, 500);
     field_drawer.updategameFieldPixelsAsCanvas(currentConwayGame);
     field_drawer.displayGeneration(-1);
-    await sleep(10000);
+    await sleep(200);
     for (let generation = 0; generation < 2000; generation++) {
         field_drawer.displayGeneration(generation);
         currentConwayGame = currentConwayGame.next_conway_state();
@@ -26,3 +28,4 @@ async function main() {
 
 // expects html to be loaded
 main()
+printMe()

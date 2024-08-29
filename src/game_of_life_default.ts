@@ -94,6 +94,10 @@ class ConwayGame {
         this.rules = rules;
     }
 
+    public getCell(xPos: number, yPos: number): ConwayCell{
+        return this.gameField[yPos][xPos];
+    }
+
     public setCell(xPos: number, yPos: number, value: ConwayCell) {
         this.gameField[yPos][xPos] = value;
     }
@@ -173,8 +177,6 @@ class ConwayGameFactory {
                 conway_game.gameField[newXPos][newYPos] = new ConwayCell(true);
             }       
         }
-        
-        console.log(conway_game.gameField[300][217]);
         return conway_game;
     }
 
@@ -211,6 +213,8 @@ class ConwayGameFactory {
 
 interface CellRepr{
     get data(): [number, number, number, number];
+
+    clone(): CellRepr;
 }
 
 class CellColor implements CellRepr{
@@ -227,6 +231,10 @@ class CellColor implements CellRepr{
 
     get data(): [number, number, number, number] {
         return [this.r, this.g, this.b, this.a];
+    }
+
+    public clone(): CellColor {
+        return new CellColor(this.r, this.g, this.b, this.a);
     }
 }
 
@@ -265,15 +273,16 @@ class ConwayGameRepresenter{
     }
 
     public as_number_colors_arr(): CellRepr[] {
-        let result: CellRepr[] = [];
+        let result: CellRepr[] = new Array((this.conway_game.xSize) * (this.conway_game.ySize)).fill(this.cell_repr_transparent);
         for (let indexX = 0; indexX < this.conway_game.xSize; indexX++) {
             for (let indexY = 0; indexY < this.conway_game.ySize; indexY++) {
-                const cell: ConwayCell = this.conway_game.gameField[indexX][indexY];
+                const cell: ConwayCell = this.conway_game.getCell(indexX, indexY);
+                let one_dim_ind = indexX + indexY * (this.conway_game.xSize);
                 if (cell.is_alive) {
-                    result[indexX + (this.conway_game.ySize) * indexY] = this.cell_repr_alive;
+                    result[one_dim_ind] = this.cell_repr_alive;
                     }
                 else {
-                    result[indexX + (this.conway_game.ySize) * indexY] = this.cell_repr_dead; 
+                    result[one_dim_ind] = this.cell_repr_dead; 
                 }
             }
         }
@@ -284,10 +293,14 @@ class ConwayGameRepresenter{
 class ConwayHTMLDisplayer {
     xStyleCanvas: string;
     yStyleCanvas: string;
+    xPixels: number;
+    yPixels: number;
 
-    constructor(xStyle: string, yStyle: string) {
+    constructor(xStyle: string, yStyle: string, xPixels: number, yPixels: number) {
         this.xStyleCanvas = xStyle;
         this.yStyleCanvas = yStyle;
+        this.xPixels = xPixels;
+        this.yPixels = yPixels;
     }
 
     public updateEmojiGameFieldAsString(conwayGame: ConwayGame) {
@@ -298,30 +311,29 @@ class ConwayHTMLDisplayer {
         }
     }
 
-    public updategameFieldPixelsAsCanvas(conwayGame: ConwayGame) {
+    public updategameFieldPixelsAsCanvas(conwayGame: ConwayGame, offsetX: number = 0, offsetY: number = 0) {
         let representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame);
         let gameSpace = document.getElementById("gameField");
         if (gameSpace == null) {
             console.error("couldn't find the gameField");
             return;
         }
-        gameSpace.style.width = "500px";
-        gameSpace.style.height = "500px";
+        // also resize the wrapping html might be needed again
         let new_canvas = document.createElement("canvas");
-        new_canvas.style.width = "500px";
-        new_canvas.style.height = "500px";
+        new_canvas.style.width = this.xStyleCanvas;
+        new_canvas.style.height = this.yStyleCanvas;
+        new_canvas.width = this.xPixels;
+        new_canvas.height = this.yPixels;
         let context = new_canvas.getContext("2d");
         let xOffset = conwayGame.xSize;
         let yOffset = conwayGame.ySize;
         const imageData = context?.createImageData(xOffset, yOffset);
-        console.log("Created with size:" + xOffset + "," + yOffset);
         if (!imageData) {
             return;
         }
         const number_color_arr: CellRepr[] = representer.as_number_colors_arr();
-        console.log("length of arr" + number_color_arr.length);
         let cur_res_index = 0;
-        for (let i = 0; i < imageData.data.length; i += 4) {
+        for (let i = 0; i < imageData.data.length; i += 4) { // TODO just flatten, how to do that with ro props
             let cell_repr: CellRepr = number_color_arr[cur_res_index];
             let cell_repr_data = cell_repr.data;
             imageData.data[i + 0] = cell_repr_data[0]; // R value
@@ -330,7 +342,7 @@ class ConwayHTMLDisplayer {
             imageData.data[i + 3] = cell_repr_data[3]; // A value
             cur_res_index += 1;
         }
-        context?.putImageData(imageData, 0, 0);
+        context?.putImageData(imageData, offsetX, offsetY);
         if (context) {
             context.imageSmoothingEnabled = false;
         }
@@ -360,4 +372,4 @@ const WORLD236RULES = new Array(new ConwayGameRule(true, SURROUNDINGPOSITIONS, [
 const SNAKEKINGRULEIDEA = new Array(new ConwayGameRule(true, SURROUNDINGPOSITIONS, [2], [2]));
 const WORLD44RULES = new Array(new ConwayGameRule(true, SURROUNDINGPOSITIONS, [3], [2]));
 
-export {ConwayCell, ConwayGame, ConwayGameFactory, DEFAULTGAMERULE, ConwayHTMLDisplayer};
+export {ConwayCell, ConwayGame, ConwayGameFactory, DEFAULTGAMERULE, ConwayHTMLDisplayer, ConwayGameRepresenter, CellColor};
