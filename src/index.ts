@@ -1,4 +1,3 @@
-import * as _ from 'lodash';
 import { ConwayGame, ConwayGameFactory, DEFAULTGAMERULE, ConwayHTMLDisplayer } from "./game_of_life_default";
 import printMe from './print'; // for testing webpck
 
