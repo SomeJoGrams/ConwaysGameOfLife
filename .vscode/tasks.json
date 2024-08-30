@@ -6,11 +6,33 @@
     {
       "type": "typescript",
       "tsconfig": "tsconfig.json",
-      "problemMatcher": ["$tsc"],
+      "problemMatcher": [
+        "$tsc"
+      ],
       "group": {
         "kind": "build",
         "isDefault": true
       }
+    },
+    {
+      "type": "typescript",
+      "tsconfig": "tsconfig.json",
+      "option": "watch",
+      "problemMatcher": [
+        "$tsc-watch"
+      ],
+      "group": "build",
+      "label": "tsc: watch - tsconfig.json"
+    },
+    {
+      "type": "npm",
+      "script": "build:watch",
+      "group": "build",
+      "isBackground": true, 
+      "dependsOn": "tsc: watch - tsconfig.json",
+      "problemMatcher": ["$webpack-watch"],
+      "label": "npm: build",
+      "detail": "webpack"
     }
   ]
 }
