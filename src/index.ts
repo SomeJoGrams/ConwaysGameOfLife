@@ -9,14 +9,27 @@ function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }   	
 
+function bpm() { // TODO add audio spikes for bpm
+    return 100;
+}
+
+function bpm_timeout() {
+    return 20 * (bpm() / 60) * (Math.random());
+}
+
+function get_ratio_y_to_x(x: number) {
+    return Math.round(x * 0.5625);
+}
+
 async function main() {
-    let conwayGameFactory = new ConwayGameFactory(500, Math.round(500*0.5625), DEFAULTGAMERULE); // todo real screen proportions, e.g. window is sized
-    let currentConwayGame: ConwayGame | null = conwayGameFactory.circle(100);
+    let x_pixel_default = 1000;
+    let conwayGameFactory = new ConwayGameFactory(x_pixel_default, get_ratio_y_to_x(x_pixel_default), DEFAULTGAMERULE); // todo real screen proportions, e.g. window is sized
+    let currentConwayGame: ConwayGame | null = conwayGameFactory.randomize_cells();
     if (currentConwayGame == null) {
         return;
     }
     let config = new ConfigStorage(new CellColor(125, 255, 255, 255), new CellColor(0,0,20,255));
-    const field_drawer: ConwayHTMLDisplayer = new ConwayHTMLDisplayer("100vw", "100vh", 500, 0.5625*500, config); // TODO move arg to css/ config class
+    const field_drawer: ConwayHTMLDisplayer = new ConwayHTMLDisplayer("100vw", "100vh", x_pixel_default, get_ratio_y_to_x(x_pixel_default), config); // TODO move arg to css/ config class
     field_drawer.updategameFieldPixelsAsCanvas(currentConwayGame);
     field_drawer.displayGeneration(-1);
     await sleep(200);
@@ -25,7 +38,7 @@ async function main() {
         currentConwayGame = currentConwayGame.next_conway_state();
         field_drawer.updategameFieldPixelsAsCanvas(currentConwayGame);
         console.log("next generation" + generation);
-        await sleep(200);
+        await sleep(bpm_timeout());
     }
 }
 
