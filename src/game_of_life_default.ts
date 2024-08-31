@@ -93,7 +93,8 @@ class ConwayGame {
     }
 
     public setCell(xPos: number, yPos: number, value: ConwayCell) {
-        this.gameField[yPos][xPos] = value;
+        let cellPos: CellPosition = this.borderFixedRules(new CellPosition(xPos, yPos));
+        this.gameField[cellPos.yPos][cellPos.xPos] = value;
     }
 
     protected borderFixedRules(pos: CellPosition): CellPosition {
@@ -214,13 +215,13 @@ class ConwayGameFactory {
         return new CellPosition(middleX, middleY);
     }
 
-    public randomize_cells(): ConwayGame {
+    public randomize_cells(alive_above: number = 3, scale_rand: number = 10): ConwayGame {
         let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, "cutoff");
         for (let indexX = 0; indexX < this.xSize; indexX++) {
             for (let indexY = 0; indexY < this.ySize; indexY++) {
-                let rand_val = Math.round(Math.random() * 10);
-                if (rand_val >= 3) {
-                    conway_game.gameField[indexX][indexY] = new ConwayCell(true);
+                let rand_val = Math.round(Math.random() * scale_rand);
+                if (rand_val >= alive_above) {
+                    conway_game.setCell(indexX, indexY, new ConwayCell(true));
                 }
             }
         }
