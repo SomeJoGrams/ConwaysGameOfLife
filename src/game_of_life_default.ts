@@ -192,7 +192,7 @@ class ConwayGameFactory {
             for (let angle = 0; angle < 2 * Math.PI; angle+=1/(2 * Math.PI)) {
                 let newXPos = pos.xPos - (Math.round(posToRotate.xPos * Math.cos(angle) + posToRotate.yPos * -1 * Math.sin(angle)));
                 let newYPos = pos.yPos + (Math.round(posToRotate.xPos * Math.sin(angle) + posToRotate.yPos * Math.cos(angle)));
-                conway_game.gameField[newXPos][newYPos] = new ConwayCell(true);
+                conway_game.setCell(newXPos, newYPos, new ConwayCell(true));
             }       
         }
         return conway_game;
@@ -386,9 +386,9 @@ class ConwayHTMLDisplayer {
 class ConfigStorage {
     _alive_cell_color: CellRepr;
     _dead_cell_color: CellRepr;
-    public constructor() {
-        this._alive_cell_color = new CellColor(255, 255, 255, 255);
-        this._dead_cell_color = new CellColor(0, 0, 20, 255);
+    public constructor(color_alive: CellColor = new CellColor(255, 255, 255, 255), color_dead: CellColor = new CellColor(0, 0, 20, 255)) {
+        this._alive_cell_color = color_alive;
+        this._dead_cell_color = color_dead;
     }
 
     get alive_cell_repr(): CellRepr {

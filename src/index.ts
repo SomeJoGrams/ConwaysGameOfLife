@@ -1,5 +1,5 @@
 import { isNull } from "lodash";
-import { ConwayGame, ConwayGameFactory, DEFAULTGAMERULE, ConwayHTMLDisplayer, ConfigStorage } from "./game_of_life_default";
+import { ConwayGame, ConwayGameFactory, DEFAULTGAMERULE, ConwayHTMLDisplayer, ConfigStorage, CellColor } from "./game_of_life_default";
 import "../resources/css/main.css"
 import printMe from './print'; // for testing webpck
 let gamefield_template = require("../html_templates/partials/game_field.hbs");
@@ -11,12 +11,12 @@ function sleep(ms: number) {
 
 async function main() {
     let conwayGameFactory = new ConwayGameFactory(500, Math.round(500*0.5625), DEFAULTGAMERULE); // todo real screen proportions, e.g. window is sized
-    let currentConwayGame: ConwayGame | null = conwayGameFactory.centeredfPentomino();
+    let currentConwayGame: ConwayGame | null = conwayGameFactory.circle(100);
     if (currentConwayGame == null) {
         return;
     }
-    let config = new ConfigStorage();
-    const field_drawer: ConwayHTMLDisplayer = new ConwayHTMLDisplayer("100vw", "100vh", 500, 0.5625*500, config); // TODO move arg to css
+    let config = new ConfigStorage(new CellColor(125, 255, 255, 255), new CellColor(0,0,20,255));
+    const field_drawer: ConwayHTMLDisplayer = new ConwayHTMLDisplayer("100vw", "100vh", 500, 0.5625*500, config); // TODO move arg to css/ config class
     field_drawer.updategameFieldPixelsAsCanvas(currentConwayGame);
     field_drawer.displayGeneration(-1);
     await sleep(200);
