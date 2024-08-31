@@ -1,4 +1,3 @@
-
 class ConwayCell {
     alive: boolean;
 
@@ -265,10 +264,10 @@ class ConwayGameRepresenter{
     cell_repr_dead: CellRepr;
     cell_repr_transparent: CellRepr;
 
-    constructor(conway_game: ConwayGame){
+    constructor(conway_game: ConwayGame, config: ConfigStorage){
         this.conway_game = conway_game;
-        this.cell_repr_alive = new CellColor(255, 255, 255, 255);
-        this.cell_repr_dead = new CellColor(0, 0, 20, 255);
+        this.cell_repr_alive = config._alive_cell_color; 
+        this.cell_repr_dead = config._dead_cell_color; 
         this.cell_repr_transparent = new CellColor(0, 0, 0, 0);
     }
     
@@ -314,24 +313,26 @@ class ConwayHTMLDisplayer {
     yStyleCanvas: string;
     xPixels: number;
     yPixels: number;
+    config: ConfigStorage;
 
-    constructor(xStyle: string, yStyle: string, xPixels: number, yPixels: number) {
+    constructor(xStyle: string, yStyle: string, xPixels: number, yPixels: number, config: ConfigStorage) {
         this.xStyleCanvas = xStyle;
         this.yStyleCanvas = yStyle;
         this.xPixels = xPixels;
         this.yPixels = yPixels;
+        this.config = config;
     }
 
     public updateEmojiGameFieldAsString(conwayGame: ConwayGame) {
         let gameSpace = document.getElementById("gameField");
         if (gameSpace != null) {
-            let representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame);
+            let representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
             gameSpace.innerHTML = representer.str_field();
         }
     }
 
     public updategameFieldPixelsAsCanvas(conwayGame: ConwayGame, offsetX: number = 0, offsetY: number = 0) {
-        let representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame);
+        let representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
         let gameSpace = document.getElementById("gameField");
         if (gameSpace == null) {
             console.error("couldn't find the gameField");
@@ -382,6 +383,24 @@ class ConwayHTMLDisplayer {
         
 }
 
+class ConfigStorage {
+    _alive_cell_color: CellRepr;
+    _dead_cell_color: CellRepr;
+    public constructor() {
+        this._alive_cell_color = new CellColor(255, 255, 255, 255);
+        this._dead_cell_color = new CellColor(0, 0, 20, 255);
+    }
+
+    get alive_cell_repr(): CellRepr {
+        return this._alive_cell_color;
+    }
+
+    get dead_cell_repr(): CellRepr{
+        return this._dead_cell_color;
+    }
+    
+}
+
 const SURROUNDINGPOSITIONS = new Array(new CellPosition(-1, -1), new CellPosition(-1, 0), new CellPosition(-1, 1), new CellPosition(0, 1), new CellPosition(0, -1), new CellPosition(1, 1), new CellPosition(1, 0), new CellPosition(1, -1));
 const DEFAULTGAMERULE = new Array(new ConwayGameRule(true, SURROUNDINGPOSITIONS, [2,3], [3]));
 const MULTIPLICATIONGAMERULE = new Array(new ConwayGameRule(true, SURROUNDINGPOSITIONS, [2], [2]));
@@ -391,4 +410,4 @@ const WORLD236RULES = new Array(new ConwayGameRule(true, SURROUNDINGPOSITIONS, [
 const SNAKEKINGRULEIDEA = new Array(new ConwayGameRule(true, SURROUNDINGPOSITIONS, [2], [2]));
 const WORLD44RULES = new Array(new ConwayGameRule(true, SURROUNDINGPOSITIONS, [3], [2]));
 
-export {ConwayCell, ConwayGame, ConwayGameFactory, DEFAULTGAMERULE, ConwayHTMLDisplayer, ConwayGameRepresenter, CellColor};
+export {ConwayCell, ConwayGame, ConwayGameFactory, DEFAULTGAMERULE, ConwayHTMLDisplayer, ConwayGameRepresenter, CellColor, ConfigStorage};
