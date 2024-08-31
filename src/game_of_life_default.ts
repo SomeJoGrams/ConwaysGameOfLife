@@ -103,13 +103,13 @@ class ConwayGame {
         }
         let xPosFixed = pos.xPos;
         let yPosFixed = pos.yPos;
-        if (pos.xPos > this.xSize) {
+        if (pos.xPos >= this.xSize) {
             xPosFixed = pos.xPos % this.xSize;
         }
         if (pos.xPos < 0) {
             xPosFixed = (pos.xPos % this.xSize) * - 1;
         }
-        if (pos.yPos > this.ySize) {
+        if (pos.yPos >= this.ySize) {
             yPosFixed = pos.yPos % this.ySize;
         }
         if (pos.yPos < 0) {
@@ -163,11 +163,13 @@ class ConwayGameFactory {
     xSize: number;
     ySize: number;
     rules: ConwayGameRule[];
+    borderRules: "cutoff" | "extend";
 
-    constructor(xSize: number, ySize: number, rules: ConwayGameRule[]) {
+    constructor(xSize: number, ySize: number, rules: ConwayGameRule[], borderRules: "cutoff" | "extend" = "cutoff") {
         this.xSize = xSize;
         this.ySize = ySize;
         this.rules = rules;
+        this.borderRules = borderRules;
     }
 
     public centeredfPentomino(): ConwayGame | null {
@@ -176,7 +178,7 @@ class ConwayGameFactory {
             return null;
         }
         let pos = this.get_center();
-        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, "cutoff");
+        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.borderRules);
         conway_game.setCell(pos.xPos, pos.yPos, new ConwayCell(true));
         conway_game.setCell(pos.xPos, pos.yPos + 1, new ConwayCell(true));
         conway_game.setCell(pos.xPos, pos.yPos - 1, new ConwayCell(true));
@@ -187,7 +189,7 @@ class ConwayGameFactory {
 
     public circle(radius: number) {
         let pos = this.get_center();
-        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, "cutoff");
+        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.borderRules);
         for (let radiusInc = 0; radiusInc < radius; radiusInc++) {
             let posToRotate = new CellPosition(0, radiusInc);
             for (let angle = 0; angle < 2 * Math.PI; angle+=1/(2 * Math.PI)) {
@@ -232,6 +234,7 @@ class ConwayGameFactory {
 
 interface CellRepr{
     get data(): [number, number, number, number];
+    get rgba_str(): string;
 
     clone(): CellRepr;
 }
@@ -250,6 +253,10 @@ class CellColor implements CellRepr{
 
     get data(): [number, number, number, number] {
         return [this.r, this.g, this.b, this.a];
+    }
+
+    get rgba_str(): string{
+        return "rgba(" + this.r + "," + this.g + "," + this.b + "," + this.a + ")"
     }
 
     public clone(): CellColor {
@@ -297,16 +304,17 @@ class ConwayGameRepresenter{
             for (let indexY = 0; indexY < this.conway_game.ySize; indexY++) {
                 const cell: ConwayCell = this.conway_game.getCell(indexX, indexY);
                 let one_dim_ind = indexX + indexY * (this.conway_game.xSize);
-                if (cell.is_alive) {
-                    result[one_dim_ind] = this.cell_repr_alive;
-                    }
-                else {
-                    result[one_dim_ind] = this.cell_repr_dead; 
-                }
+                result[one_dim_ind] = cell.is_alive ? this.cell_repr_alive : this.cell_repr_dead;
             }
         }
         return result;
     }
+
+    public number_color_arr(indexX: number, indexY: number): CellRepr{
+        const cell: ConwayCell = this.conway_game.getCell(indexX, indexY);
+        return cell.is_alive ? this.cell_repr_alive : this.cell_repr_dead
+    }
+
 }
 
 class ConwayHTMLDisplayer {
@@ -333,22 +341,11 @@ class ConwayHTMLDisplayer {
     }
 
     public updategameFieldPixelsAsCanvas(conwayGame: ConwayGame, offsetX: number = 0, offsetY: number = 0) {
-        let representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
-        let gameSpace = document.getElementById("gameField");
-        if (gameSpace == null) {
-            console.error("couldn't find the gameField");
-            return;
-        }
-        // also resize the wrapping html might be needed again
-        let new_canvas = document.createElement("canvas");
-        new_canvas.style.width = this.xStyleCanvas;
-        new_canvas.style.height = this.yStyleCanvas;
-        new_canvas.width = this.xPixels;
-        new_canvas.height = this.yPixels;
-        let context = new_canvas.getContext("2d");
-        let xOffset = conwayGame.xSize;
-        let yOffset = conwayGame.ySize;
-        const imageData = context?.createImageData(xOffset, yOffset);
+        const representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
+        const gameSpace = document.getElementById("gameField");
+        const canvas = this.create_missing_html_canvas_on_gamefield()
+        let context = canvas.getContext("2d");
+        const imageData = context?.createImageData(offsetX, offsetY);
         if (!imageData) {
             return;
         }
@@ -367,8 +364,54 @@ class ConwayHTMLDisplayer {
         if (context) {
             context.imageSmoothingEnabled = false;
         }
-        gameSpace.replaceChildren(new_canvas);
+        gameSpace.replaceChildren(canvas);
     }
+
+    protected create_missing_html_canvas_on_gamefield() : HTMLCanvasElement{
+        let gameSpace = document.getElementById("gameField");
+        if (gameSpace == null) {
+            console.error("couldn't find the gameField");
+        }
+        let canvas: HTMLCanvasElement | null = <HTMLCanvasElement>document.getElementById("gameFieldCanvas");
+        if (canvas == null) {
+            canvas = document.createElement("canvas");
+            canvas.id = "gameFieldCanvas";
+        }
+        // also resize the wrapping html might be needed again
+        canvas.style.width = this.xStyleCanvas;
+        canvas.style.height = this.yStyleCanvas;
+        canvas.width = this.xPixels;
+        canvas.height = this.yPixels;
+        return canvas;
+    }
+
+    public updategameFieldWithShapes(conwayGame: ConwayGame, offsetX: number = 0, offsetY: number = 0) {
+        const representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
+        const gameSpace = document.getElementById("gameField");
+        const canvas = this.create_missing_html_canvas_on_gamefield();
+        const context = canvas.getContext("2d");
+        const number_color_arr: CellRepr[] = representer.as_number_colors_arr();
+        const xSizeRect = canvas.width / conwayGame.xSize;
+        const ySizeRect = canvas.height / conwayGame.ySize;
+        let cur_res_index = 0;
+        if (context == null) {
+            return;
+        }
+        for (let xPos = 0; xPos < conwayGame.xSize; xPos++){
+            for (let yPos = 0; yPos < conwayGame.ySize; yPos++){
+                let cell_repr: CellRepr = representer.number_color_arr(xPos, yPos);
+                let cell_repr_data = cell_repr.data;
+                context.fillStyle = cell_repr.rgba_str;
+                context?.fillRect(xPos * xSizeRect, yPos * ySizeRect, xSizeRect, ySizeRect);
+                cur_res_index++;
+            }
+        }
+        if (context) {
+            context.imageSmoothingEnabled = false;
+        }
+        gameSpace.replaceChildren(canvas);
+    }
+
 
     public displayGeneration(generation: number) {
         let currentGenerationElement = document.getElementById("GameFieldCurrentGeneration");
