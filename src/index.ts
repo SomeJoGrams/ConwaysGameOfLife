@@ -29,7 +29,7 @@ async function main() {
     if (currentConwayGame == null) {
         return;
     }
-    let config = new ConfigStorage(new CellColor(125, 255, 255, 255), new CellColor(0,0,20,255), true);
+    let config = new ConfigStorage(new CellColor(125, 255, 255, 255), new CellColor(0,0,20,255), 4);
     const field_drawer: ConwayHTMLDisplayer = new ConwayHTMLDisplayer("100vw", "100vh", x_canvas_pixel_default, get_ratio_y_to_x(x_canvas_pixel_default), config); // TODO move arg to css/ config class
     field_drawer.updategameFieldWithShapes(currentConwayGame);
     field_drawer.displayGeneration(-1);

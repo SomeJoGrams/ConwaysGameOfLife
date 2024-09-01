@@ -413,26 +413,24 @@ class ConwayHTMLDisplayer {
     xPixels: number;
     yPixels: number;
     config: ConfigStorage;
-    visualTrailTimeSteps: number
     posToCellWithVisualTrail: Map<string, AgingCellRepr>;
 
-    constructor(xStyle: string, yStyle: string, xPixels: number, yPixels: number, config: ConfigStorage, visualTrailSteps: number = 10) {
+    constructor(xStyle: string, yStyle: string, xPixels: number, yPixels: number, config: ConfigStorage) {
         this.xStyleCanvas = xStyle;
         this.yStyleCanvas = yStyle;
         this.xPixels = xPixels;
         this.yPixels = yPixels;
         this.config = config;
-        this.visualTrailTimeSteps = visualTrailSteps;
         this.posToCellWithVisualTrail = new Map();
     }
 
     public addVisualTrailCellsAndAgeTrail(conway_game: ConwayGame) {
-        if (!this.config.display_trails) {
+        if (this.config.trail_length == 1) {
             return;
         }
         const new_cell_trail_positions = conway_game.getLastStepDiedCellPositions()
         new_cell_trail_positions.forEach((pos, i, arr) => {
-            this.posToCellWithVisualTrail.set(pos.toString(), new AgingCellRepr(pos, this.visualTrailTimeSteps, this.config.alive_cell_repr))
+            this.posToCellWithVisualTrail.set(pos.toString(), new AgingCellRepr(pos, this.config.trail_length, this.config.alive_cell_repr))
         });
         this.posToCellWithVisualTrail.forEach((val, key, map) => {
             val.age()
@@ -546,11 +544,11 @@ class ConwayHTMLDisplayer {
 class ConfigStorage {
     _alive_cell_color: CellRepr;
     _dead_cell_color: CellRepr;
-    _display_trails: boolean;
-    public constructor(color_alive: CellColor = new CellColor(255, 255, 255, 255), color_dead: CellColor = new CellColor(0, 0, 20, 255), display_trails=false) {
+    _display_trails: number;
+    public constructor(color_alive: CellColor = new CellColor(255, 255, 255, 255), color_dead: CellColor = new CellColor(0, 0, 20, 255), display_trails=1) {
         this._alive_cell_color = color_alive;
         this._dead_cell_color = color_dead;
-        this._display_trails = display_trails;
+        this._display_trails = Math.max(1, display_trails);
     }
 
     get alive_cell_repr(): CellRepr {
@@ -561,7 +559,7 @@ class ConfigStorage {
         return this._dead_cell_color;
     }
 
-    get display_trails(): boolean{
+    get trail_length(): number{
         return this._display_trails;
     }
     

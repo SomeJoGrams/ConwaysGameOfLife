@@ -34,11 +34,6 @@ describe("gamefield representation", () => {
             expected_array);
     });
 
-    // (0,0), (1,0), (2,0)
-    // (0,1), (1,1), (2,1)
-    // (0,2), (1,2), (2,2)
-
-
     test("Create conway field image data", () => {
         let conway_game: ConwayGame = new ConwayGame(3, 3, null, [], "cutoff");
         conway_game.setCell(2, 1, new ConwayCell(true));
@@ -150,7 +145,7 @@ describe("ConwayHTMLDisplayer tests and trail calculation", () => {
         conwayGame.setCell(2, 1, new ConwayCell(true));
         conwayGame.setCell(1, 2, new ConwayCell(true));
         const nextConwayGame = conwayGame.next_conway_game();
-        const conwayHTMLDisplayer = new ConwayHTMLDisplayer("100%", "100%", 5, 5, new ConfigStorage(CellColor.WHITE, CellColor.BLACK, true), 2);
+        const conwayHTMLDisplayer = new ConwayHTMLDisplayer("100%", "100%", 5, 5, new ConfigStorage(CellColor.WHITE, CellColor.BLACK, 2));
         conwayHTMLDisplayer.addVisualTrailCellsAndAgeTrail(nextConwayGame);
         // conwayHTMLDisplayer.posToCellWithVisualTrail.forEach((c, k, m) => console.log("key" + k + " val " + c));
         let position1_0 = new CellPosition(1, 0);
@@ -170,6 +165,7 @@ describe("ConwayHTMLDisplayer tests and trail calculation", () => {
         expect(conwayHTMLDisplayer.posToCellWithVisualTrail.get(position0_1.toString())).toStrictEqual(cell2);
         expect(conwayHTMLDisplayer.posToCellWithVisualTrail.get(position2_1.toString())).toStrictEqual(cell3);
         expect(conwayHTMLDisplayer.posToCellWithVisualTrail.get(position1_2.toString())).toStrictEqual(cell4);
+        console.log("b");
     });
 
     test("Fading Cell", () => {
@@ -201,6 +197,4 @@ describe("ConwayHTMLDisplayer tests and trail calculation", () => {
         fading_cell.age();
         expect(fading_cell.completlyFaded).toBe(true);
     })
-
-
-})
+});
