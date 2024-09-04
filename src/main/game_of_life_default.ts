@@ -409,8 +409,6 @@ class AgingCellRepr{
 
 class ConwayHTMLDisplayer {
     canvas: HTMLCanvasElement | OffscreenCanvas | undefined;
-    xStyleCanvas: string;
-    yStyleCanvas: string;
     xPixels: number;
     yPixels: number;
     config: ConfigStorage;
@@ -419,12 +417,10 @@ class ConwayHTMLDisplayer {
     preRenderCanvas: OffscreenCanvas | null;
     bitmapContext: ImageBitmapRenderingContext;
 
-    constructor(canvas: HTMLCanvasElement | OffscreenCanvas | undefined, xStyle: string, yStyle: string, xPixels: number, yPixels: number, config: ConfigStorage, nextCanvasBitMap = null, preRenderCanvas: OffscreenCanvas | null = null, bitmapContext: ImageBitmapRenderingContext | null = null) {
+    constructor(canvas: HTMLCanvasElement | OffscreenCanvas | undefined, xPixels: number, yPixels: number, config: ConfigStorage, nextCanvasBitMap = null, preRenderCanvas: OffscreenCanvas | null = null, bitmapContext: ImageBitmapRenderingContext | null = null) {
         this.nextCanvasBitMap = null;
         this.preRenderCanvas = null;
         this.canvas = <OffscreenCanvas>canvas;
-        this.xStyleCanvas = xStyle;
-        this.yStyleCanvas = yStyle;
         this.xPixels = xPixels;
         this.yPixels = yPixels;
         this.config = config;
