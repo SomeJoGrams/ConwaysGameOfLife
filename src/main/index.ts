@@ -1,12 +1,6 @@
 import printMe from '../main/print'; // for testing webpck
 import "../../resources/css/main.css"
-// let worker_url = require("../workers/canvas_worker")
-// import "../workers/canvas_worker"
 let gamefield_template = require("../../resources/html_templates/partials/game_field.hbs");
-
-// declare var self: DedicatedWorkerGlobalScope;
-// export {};
-
 let uiWorker: Worker | null = null
 
 function startWindowWorker(canvas: HTMLCanvasElement, canvas2: HTMLCanvasElement): OffscreenCanvas | undefined {
@@ -35,7 +29,6 @@ function create_missing_html_canvas_on_gamefield() : HTMLCanvasElement{
         canvas.id = "gameFieldCanvas";
         gameSpace?.appendChild(canvas);
     }
-    // also resize the wrapping html might be needed again
     return canvas;
 }
     
@@ -51,7 +44,7 @@ function append_game_field_from_template() {
     document.body.appendChild(div);
 }
 
-(() => { // immediately invoked function expression (IIFE) get only called once, added due to livereload
+(() => { // immediately invoked function expression (IIFE) get only called once
     document.addEventListener("DOMContentLoaded", function () {
         append_game_field_from_template()
         let canvas = create_missing_html_canvas_on_gamefield();
