@@ -1,0 +1,8 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["esnext", "webworker", "DOM"],
+    "composite": true,
+  },
+  "include": ["../main/game_of_life_default.ts"],
+}

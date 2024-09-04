@@ -1,6 +1,5 @@
 import {describe, expect, test} from '@jest/globals';
-import { ConwayGame, ConwayGameRepresenter, ConwayCell, CellColor, ConfigStorage, CellPosition, DEFAULTGAMERULE, ConwayHTMLDisplayer, AgingCellRepr} from "../src/game_of_life_default";
-import { clone } from 'lodash';
+import { ConwayGame, ConwayGameRepresenter, ConwayCell, CellColor, ConfigStorage, CellPosition, DEFAULTGAMERULE, ConwayHTMLDisplayer, AgingCellRepr} from "../src/main/game_of_life_default";
 
 describe("gamefield representation", () => {
     test("Create small Conway field", () => {
@@ -145,7 +144,7 @@ describe("ConwayHTMLDisplayer tests and trail calculation", () => {
         conwayGame.setCell(2, 1, new ConwayCell(true));
         conwayGame.setCell(1, 2, new ConwayCell(true));
         const nextConwayGame = conwayGame.next_conway_game();
-        const conwayHTMLDisplayer = new ConwayHTMLDisplayer("100%", "100%", 5, 5, new ConfigStorage(CellColor.WHITE, CellColor.BLACK, 2));
+        const conwayHTMLDisplayer = new ConwayHTMLDisplayer(undefined, "100%", "100%", 5, 5, new ConfigStorage(CellColor.WHITE, CellColor.BLACK, 2));
         conwayHTMLDisplayer.addVisualTrailCellsAndAgeTrail(nextConwayGame);
         // conwayHTMLDisplayer.posToCellWithVisualTrail.forEach((c, k, m) => console.log("key" + k + " val " + c));
         let position1_0 = new CellPosition(1, 0);

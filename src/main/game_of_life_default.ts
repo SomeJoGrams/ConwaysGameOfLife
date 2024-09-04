@@ -408,20 +408,37 @@ class AgingCellRepr{
 
 
 class ConwayHTMLDisplayer {
+    canvas: HTMLCanvasElement | OffscreenCanvas | undefined;
     xStyleCanvas: string;
     yStyleCanvas: string;
     xPixels: number;
     yPixels: number;
     config: ConfigStorage;
     posToCellWithVisualTrail: Map<string, AgingCellRepr>;
+    nextCanvasBitMap: ImageBitmap | null;
+    preRenderCanvas: OffscreenCanvas | null;
+    bitmapContext: ImageBitmapRenderingContext;
 
-    constructor(xStyle: string, yStyle: string, xPixels: number, yPixels: number, config: ConfigStorage) {
+    constructor(canvas: HTMLCanvasElement | OffscreenCanvas | undefined, xStyle: string, yStyle: string, xPixels: number, yPixels: number, config: ConfigStorage, nextCanvasBitMap = null, preRenderCanvas: OffscreenCanvas | null = null, bitmapContext: ImageBitmapRenderingContext | null = null) {
+        this.nextCanvasBitMap = null;
+        this.preRenderCanvas = null;
+        this.canvas = <OffscreenCanvas>canvas;
         this.xStyleCanvas = xStyle;
         this.yStyleCanvas = yStyle;
         this.xPixels = xPixels;
         this.yPixels = yPixels;
         this.config = config;
         this.posToCellWithVisualTrail = new Map();
+        this.canvas.width = this.xPixels;
+        this.canvas.height = this.yPixels;
+        this.bitmapContext = <ImageBitmapRenderingContext>(<OffscreenCanvas>this.canvas).getContext("bitmaprenderer");
+        if (canvas != undefined && preRenderCanvas != null) {
+            this.nextCanvasBitMap = nextCanvasBitMap;
+            this.preRenderCanvas = preRenderCanvas;
+            this.preRenderCanvas.width = this.xPixels;
+            this.preRenderCanvas.height = this.yPixels;
+
+        }
     }
 
     public addVisualTrailCellsAndAgeTrail(conway_game: ConwayGame) {
@@ -437,6 +454,7 @@ class ConwayHTMLDisplayer {
         })
     }
 
+
     public updateEmojiGameFieldAsString(conwayGame: ConwayGame) {
         let gameSpace = document.getElementById("gameField");
         if (gameSpace != null) {
@@ -445,77 +463,101 @@ class ConwayHTMLDisplayer {
         }
     }
 
-    public updategameFieldPixelsAsCanvas(conwayGame: ConwayGame, offsetX: number = 0, offsetY: number = 0) {
-        this.addVisualTrailCellsAndAgeTrail(conwayGame);
-        const representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
-        const gameSpace = document.getElementById("gameField");
-        const canvas = this.create_missing_html_canvas_on_gamefield()
-        let context = canvas.getContext("2d");
-        const imageData = context?.createImageData(offsetX, offsetY);
-        if (!imageData) {
-            return;
-        }
-        const number_color_arr: CellRepr[] = representer.as_number_colors_arr();
-        let cur_res_index = 0;
-        for (let i = 0; i < imageData.data.length; i += 4) { // TODO just flatten, how to do that with ro props
-            let cell_repr: CellRepr = number_color_arr[cur_res_index];
-            let cell_repr_data = cell_repr.data;
-            imageData.data[i + 0] = cell_repr_data[0]; // R value
-            imageData.data[i + 1] = cell_repr_data[1]; // G value
-            imageData.data[i + 2] = cell_repr_data[2]; // B value
-            imageData.data[i + 3] = cell_repr_data[3]; // A value
-            cur_res_index += 1;
-        }
-        context?.putImageData(imageData, offsetX, offsetY);
-        if (context) {
-            context.imageSmoothingEnabled = false;
-        }
-        gameSpace?.replaceChildren(canvas);
-    }
+    // TODO fix function
+    // public updategameFieldPixelsAsCanvas(conwayGame: ConwayGame, offsetX: number = 0, offsetY: number = 0) {
+    //     this.addVisualTrailCellsAndAgeTrail(conwayGame);
+    //     const representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
+    //     if (!this.canvas) { // TODO fix
+    //         console.error("Canvas is undefined");
+    //         return;
+    //     }
+    //     let context = this.canvas.getContext("2d");
+    //     this.configure_canvas();
+    //     const imageData = context?.createImageData(offsetX, offsetY);
+    //     if (!imageData) {
+    //         return;
+    //     }
+    //     const number_color_arr: CellRepr[] = representer.as_number_colors_arr();
+    //     let cur_res_index = 0;
+    //     for (let i = 0; i < imageData.data.length; i += 4) { // TODO just flatten, how to do that with ro props
+    //         let cell_repr: CellRepr = number_color_arr[cur_res_index];
+    //         let cell_repr_data = cell_repr.data;
+    //         imageData.data[i + 0] = cell_repr_data[0]; // R value
+    //         imageData.data[i + 1] = cell_repr_data[1]; // G value
+    //         imageData.data[i + 2] = cell_repr_data[2]; // B value
+    //         imageData.data[i + 3] = cell_repr_data[3]; // A value
+    //         cur_res_index += 1;
+    //     }
+    //     context?.putImageData(imageData, offsetX, offsetY);
+    //     if (context) {
+    //         context.imageSmoothingEnabled = false;
+    //     }
+    // }
 
-    protected create_missing_html_canvas_on_gamefield() : HTMLCanvasElement{
-        let gameSpace = document.getElementById("gameField");
-        if (gameSpace == null) {
-            console.error("couldn't find the gameField");
+    async preprender_bitmap(conwayGame: ConwayGame) {
+        if (!this.canvas) {
+            throw Error("no canvas defined");
         }
-        let canvas: HTMLCanvasElement | null = <HTMLCanvasElement>document.getElementById("gameFieldCanvas");
-        if (canvas == null) {
-            canvas = document.createElement("canvas");
-            canvas.id = "gameFieldCanvas";
-        }
-        // also resize the wrapping html might be needed again
-        canvas.style.width = this.xStyleCanvas;
-        canvas.style.height = this.yStyleCanvas;
-        canvas.width = this.xPixels;
-        canvas.height = this.yPixels;
-        return canvas;
-    }
-
-    public updategameFieldWithShapes(conwayGame: ConwayGame, offsetX: number = 0, offsetY: number = 0) {
-        this.addVisualTrailCellsAndAgeTrail(conwayGame);
         const representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
-        const gameSpace = document.getElementById("gameField");
-        const canvas = this.create_missing_html_canvas_on_gamefield();
-        const context = canvas.getContext("2d");
-        const xSizeRect = canvas.width / conwayGame.xSize;
-        const ySizeRect = canvas.height / conwayGame.ySize;
+        const xSizeRect = this.canvas.width / conwayGame.xSize;
+        const ySizeRect = this.canvas.height / conwayGame.ySize;
         let cur_res_index = 0;
-        if (context == null) {
-            return;
-        }
-        for (let xPos = 0; xPos < conwayGame.xSize; xPos++){
-            for (let yPos = 0; yPos < conwayGame.ySize; yPos++){
-                const fadingCell: AgingCellRepr | undefined = this.posToCellWithVisualTrail.get(new CellPosition(xPos, yPos).toString());
-                let cell_repr: CellRepr = this.faded_cell_repr_data_or_cell_repr(representer.number_color_arr(xPos, yPos), fadingCell);
-                context.fillStyle = cell_repr.rgba_str;
-                context?.fillRect(xPos * xSizeRect, yPos * ySizeRect, xSizeRect, ySizeRect);
+        let alivePath = [];
+        // let deadPath = [];
+        let fadingPaths = [];
+        for (let xPos = 0; xPos < conwayGame.xSize; xPos++) {
+            for (let yPos = 0; yPos < conwayGame.ySize; yPos++) {
+                // const fadingCell: AgingCellRepr | undefined = this.posToCellWithVisualTrail.get(new CellPosition(xPos, yPos).toString());
+                //let cell_repr: CellRepr = this.faded_cell_repr_data_or_cell_repr(representer.number_color_arr(xPos, yPos) //, fadingCell);
+                if (conwayGame.getCell(xPos, yPos).is_alive) {
+                    alivePath.push([xPos * xSizeRect, yPos * ySizeRect, xSizeRect, ySizeRect]);
+                }
+                // context?.rect(xPos * xSizeRect, yPos * ySizeRect, xSizeRect, ySizeRect);
+                // context.fillStyle = representer.number_color_arr(xPos, yPos).rgba_str;
                 cur_res_index++;
             }
         }
-        if (context) {
-            context.imageSmoothingEnabled = false;
+        let new_context = this.preRenderCanvas?.getContext("2d", { alpha: false });
+        if (new_context == null) {
+            throw Error("No Context exists");
         }
-        gameSpace?.replaceChildren(canvas);
+        new_context.imageSmoothingEnabled = false;
+        new_context.fillStyle = representer.cell_repr_dead.rgba_str;
+        new_context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        new_context?.beginPath()
+        new_context.fillStyle = representer.cell_repr_alive.rgba_str;
+        for (const path of alivePath) {
+            new_context.rect(path[0], path[1], path[2], path[3]);
+        }
+        new_context?.closePath()
+        new_context?.fill()
+        if (this.preRenderCanvas) {
+            this.nextCanvasBitMap = this.preRenderCanvas.transferToImageBitmap()
+        }
+    }
+
+    public async getPreRenderedBitmap(conwayGame: ConwayGame): Promise<ImageBitmap> {
+        if (this.preRenderCanvas == null) {
+            await this.preprender_bitmap(conwayGame);
+        }
+        return <ImageBitmap>this.nextCanvasBitMap;
+    }
+
+    public updategameFieldWithShapesFromPreRender(conwayGame: ConwayGame, offsetX: number = 0, offsetY: number = 0) {
+        this.addVisualTrailCellsAndAgeTrail(conwayGame);
+        if (!this.canvas) {
+            console.error("Canvas is undefined and therfore not usable") 
+            return;
+        }
+
+        if (this.bitmapContext == null) {
+            return;
+        }
+        let prerenderedCanvas: Promise<ImageBitmap> = this.getPreRenderedBitmap(conwayGame);
+        prerenderedCanvas.then((v) => {
+            this.bitmapContext.transferFromImageBitmap(v);
+        });
+        this.nextCanvasBitMap = null;
     }
 
     protected faded_cell_repr_data_or_cell_repr(original_cell_repr: CellRepr, opt_fading_cell: AgingCellRepr | undefined = undefined) {
