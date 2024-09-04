@@ -3,7 +3,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "build": "webpack",
-    "build:watch": "webpack --watch --mode development"
+    "build:watch": "webpack --watch --mode development",
+    "devserver": "npx webpack serve --no-client-overlay --port 5511"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
@@ -12,14 +13,14 @@
     "css-loader": "^7.1.2",
     "handlebars": "^4.7.8",
     "handlebars-loader": "^1.7.3",
-    "html-loader": "^5.1.0",
-    "html-webpack-plugin": "^5.6.0",
     "jest": "^29.7.0",
     "style-loader": "^4.0.0",
     "ts-jest": "^29.2.5",
     "typescript": "^5.5.4",
     "webpack": "^5.94.0",
-    "webpack-cli": "^5.1.4"
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.1.0",
+    "html-webpack-plugin": "^5.6.0"
   },
   "dependencies": {
     "lodash": "^4.17.21",
