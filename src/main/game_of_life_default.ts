@@ -1,12 +1,23 @@
-class ConwayCell<CELLSTATES>{
-    alive: CELLSTATES;
+interface ConwayCell{
+    reset(): void;
+    get isAlive(): boolean;
+    nextState(): void;
+}
 
-    constructor(alive: CELLSTATES) {
+class BooleanCell implements ConwayCell{
+    alive: boolean;
+    constructor(alive: boolean) {
         this.alive = alive;
     }
-
-    get is_alive(): CELLSTATES { // HOW to do this better with generics?
+    get isAlive(): boolean {
         return this.alive;
+    }
+
+    public reset(){
+        this.alive = false;
+    }
+    public nextState(): void {
+        this.alive = !this.alive;
     }
 }
 
@@ -43,8 +54,8 @@ class CellPosition implements Position {
     }
 }
 
-interface ConwayGameRule<CELLSTATES>{
-    applyRuleToGame(xPos: number, yPos: number, old_conway_game: ConwayGame<CELLSTATES>, new_conway_game: ConwayGame<CELLSTATES>): ConwayGame<CELLSTATES>;
+interface ConwayGameRule{
+    applyRuleOnPos(xPos: number, yPos: number, conwayGame: ConwayGame): ConwayGame;
     getIfLastCellKilledAtPosition(): CellPosition | null;
 }
 
@@ -70,45 +81,50 @@ class Rectangle extends Shape{
         return xPos > this.lowerLeftCorner.xPos && xPos < this.upperRightCorner.yPos &&
                 yPos > this.lowerLeftCorner.yPos && yPos < this.upperRightCorner.yPos
     }
-
 }
 
-class ShapedConwayGameRule<CELLSTATES> implements ConwayGameRule<CELLSTATES>{
-    result_state: CELLSTATES; // TODO make an interface and implement various rule kinds
+class ShapedConwayGameRule implements ConwayGameRule{
     viewed_cell_positions: CellPosition[];
     alive_goes_to_result_state_with_neighbours: number[];
     dead_goes_to_result_state_with_neighbours: number[];
     last_cell_which_died: CellPosition | null;
     shape: Shape | null;
 
-    constructor(shape: Shape | null, result_state: CELLSTATES, viewed_cells: CellPosition[], alive_goes_to_result_state_with_neighbours: number[] = [2, 3],
+    constructor(shape: Shape | null, viewed_cells: CellPosition[], alive_goes_to_result_state_with_neighbours: number[] = [2, 3],
         dead_goes_to_result_state_with_neighbours: number[] = [3]) {
         this.shape = shape;
-        this.result_state = result_state;
         this.viewed_cell_positions = viewed_cells
         this.alive_goes_to_result_state_with_neighbours = alive_goes_to_result_state_with_neighbours;
         this.dead_goes_to_result_state_with_neighbours = dead_goes_to_result_state_with_neighbours;
         this.last_cell_which_died = null;
     }
 
-    public applyRuleToGame(xPos: number, yPos: number, old_conway_game: ConwayGame<CELLSTATES>, new_conway_game: ConwayGame<CELLSTATES>): ConwayGame<CELLSTATES> {
-        const cell: ConwayCell<CELLSTATES> = old_conway_game.getCell(xPos, yPos);
-        let position = old_conway_game.borderFixedRules(new CellPosition(xPos, yPos));
-        if (this.shape != null && !this.shape.inBoundsPos(position)) {
-            return new_conway_game;
+    public ruleCanBeApplied(position: Position): boolean{
+        if (this.shape == null || (this.shape != null && !this.shape.inBoundsPos(position))) {
+            return true;
         }
-        const living_neighbour_count = old_conway_game.cell_living_neighbours(position.xPos, position.yPos, this.viewed_cell_positions);
+        return false;
+    }
+
+    public applyRuleOnPos(xPos: number, yPos: number, conwayGame: ConwayGame): ConwayGame {
+        const cell: ConwayCell = conwayGame.activeField.getCell(xPos, yPos);
+        let position = conwayGame.activeField.borderFixedRules(new CellPosition(xPos, yPos));
+        if (!this.ruleCanBeApplied(position)) {
+            return conwayGame;
+        }
+        const living_neighbour_count = conwayGame.activeField.cell_living_neighbours(position.xPos, position.yPos, this.viewed_cell_positions);
         const is_alive_neighbour_count = this.alive_goes_to_result_state_with_neighbours.some(value => living_neighbour_count == value);
         const is_dead_neighbour_count = this.dead_goes_to_result_state_with_neighbours.some(value => living_neighbour_count == value);
-        if (cell.is_alive && is_alive_neighbour_count) {
-            new_conway_game.setCell(position.xPos, position.yPos, new ConwayCell(this.result_state));
+        let nextCell = conwayGame.inactiveField.getCell(position.xPos, position.yPos);
+        if (cell.isAlive && is_alive_neighbour_count) {
+            nextCell.nextState(); // TODO add alive function
         }
-        else if (!cell.is_alive && is_dead_neighbour_count) {
-            new_conway_game.setCell(position.xPos, position.yPos, new ConwayCell(this.result_state));
+        else if (!cell.isAlive && is_dead_neighbour_count) {
+            nextCell.nextState(); // TODO add dead function
         }
-        else if (cell.is_alive)
+        else if (cell.isAlive)
             this.last_cell_which_died = new CellPosition(position.xPos, position.yPos);
-        return new_conway_game;
+        return conwayGame;
     }
 
     public getIfLastCellKilledAtPosition(): CellPosition | null {
@@ -119,34 +135,46 @@ class ShapedConwayGameRule<CELLSTATES> implements ConwayGameRule<CELLSTATES>{
 
 }
 
-class ConwayGame<CELLSTATES>{
+class ConwayField{
     xSize: number;
     ySize: number;
-    gameField: ConwayCell<CELLSTATES>[][];
     borderRules: "cutoff" | "extend";
-    positional_rules: ShapedConwayGameRule<CELLSTATES>[];
-    lastStepDiedCells: CellPosition[];
+    gameField: ConwayCell[][];
+    _living_cell_count: number;
 
-    constructor(pxSize: number, pySize: number, cells: null | ConwayCell<CELLSTATES>[][], rules: ShapedConwayGameRule<CELLSTATES>[], borderRules: "cutoff" | "extend" = "cutoff") {
+    constructor(pxSize: number, pySize: number, borderRules: "cutoff" | "extend" = "cutoff"){
         this.xSize = pxSize;
         this.ySize = pySize;
+        this.gameField = this.create_empty_conways_cell_array();
         this.borderRules = borderRules;
-        if (cells == null) {
-            this.gameField = this.create_empty_conways_cell_array();
-        }
-        else {
-            this.gameField = cells;
-        }
-        this.positional_rules = rules;
-        this.lastStepDiedCells = []
+        this._living_cell_count = 0;
     }
 
-    public getCell(xPos: number, yPos: number): ConwayCell<CELLSTATES>{
+    protected create_empty_conways_cell_array(): ConwayCell[][] {
+        let arr = new Array(this.ySize).fill(false).map(() => new Array(this.xSize).fill(false));
+        return arr.map((vector, i, arr) => (vector.map((el, i, arr) => new BooleanCell(false))));
+    }
+
+    get living_cell_percent(): number{
+        return this._living_cell_count / this.xSize * this.ySize;
+    }
+
+    protected count_living_cells() {
+        for (let indexX = 0; indexX < this.xSize; indexX++) {
+            for (let indexY = 0; indexY < this.ySize; indexY++) {
+                if (this.getCell(indexX, indexY).isAlive) {
+                    this._living_cell_count += 1;
+                }
+            }
+        }
+    }
+
+    public getCell(xPos: number, yPos: number): ConwayCell{
         let cellPos: CellPosition = this.borderFixedRules(new CellPosition(xPos, yPos));
         return this.gameField[cellPos.yPos][cellPos.xPos];
     }
 
-    public setCell(xPos: number, yPos: number, value: ConwayCell<CELLSTATES>) {
+    public setCell(xPos: number, yPos: number, value: ConwayCell) {
         let cellPos: CellPosition = this.borderFixedRules(new CellPosition(xPos, yPos));
         this.gameField[cellPos.yPos][cellPos.xPos] = value;
     }
@@ -184,32 +212,6 @@ class ConwayGame<CELLSTATES>{
         return new CellPosition(xPosFixed, yPosFixed);
     }
 
-    protected create_empty_conways_cell_array(): ConwayCell<CELLSTATES>[][] {
-        return new Array(this.ySize).fill(false).map(() => new Array(this.xSize).fill(new ConwayCell(false)));
-    }
-
-    public next_conway_game(): ConwayGame<CELLSTATES> {
-        let new_conway_cell_field: ConwayCell<CELLSTATES>[][] = this.create_empty_conways_cell_array();
-        let new_conway_game = new ConwayGame(this.xSize, this.ySize, new_conway_cell_field, this.positional_rules);
-        new_conway_game.lastStepDiedCells = [];
-        for (let indexX = 0; indexX < this.xSize; indexX++) {
-            for (let indexY = 0; indexY < this.ySize; indexY++) {
-                this.positional_rules.forEach(rule => {
-                    rule.applyRuleToGame(indexX, indexY, this, new_conway_game);
-                    let optional_cell: CellPosition | null = rule.getIfLastCellKilledAtPosition();
-                    if (optional_cell != null) {
-                        new_conway_game.lastStepDiedCells.push(optional_cell)
-                    }
-                });
-            }
-        }
-        return new_conway_game;
-    }
-
-    public getLastStepDiedCellPositions(): CellPosition[]{
-        return this.lastStepDiedCells;
-    }
-
     public cell_living_neighbours(indexX: number, indexY: number, lookingAt: Position[]) {
         let count = 0;
         lookingAt.forEach((list, val, arr) => {
@@ -217,7 +219,7 @@ class ConwayGame<CELLSTATES>{
             let y1 = list.yPosition;
             let a = indexX + x1;
             let b = indexY + y1;
-            if (this.in_field(a, b) && this.getCell(a, b).is_alive) {
+            if (this.in_field(a, b) && this.getCell(a, b).isAlive) {
                 count += 1;
             }
         });
@@ -232,48 +234,185 @@ class ConwayGame<CELLSTATES>{
         return inField;
     }
 
+
 }
 
-class ConwayGameFactory<CELLSTATES>{
+class ConwayGame{
     xSize: number;
     ySize: number;
-    rules: ShapedConwayGameRule<CELLSTATES>[];
+    currentGameField: ConwayField;
+    lastGameField: ConwayField;
+    positional_rules: ShapedConwayGameRule[];
+    fallbackRule: ShapedConwayGameRule | null;
+    lastStepDiedCells: CellPosition[];
     borderRules: "cutoff" | "extend";
-    aliveCellState: CELLSTATES;
+    activeGameFieldKind: "last" | "current";
 
-    constructor(xSize: number, ySize: number, rules: ShapedConwayGameRule<CELLSTATES>[], aliveCellState: CELLSTATES, borderRules: "cutoff" | "extend" = "cutoff") {
+    constructor(pxSize: number, pySize: number, cells: null | ConwayField, rules: ShapedConwayGameRule[], fallbackRule: ShapedConwayGameRule | null = null, borderRules: "cutoff" | "extend" = "cutoff") {
+        this.xSize = pxSize;
+        this.ySize = pySize;
+        this.borderRules = borderRules;
+        if (cells == null) {
+            this.currentGameField = this.createGameField();
+        }
+        else {
+            this.currentGameField = cells;
+        }
+        this.lastGameField = this.createGameField();
+        this.activeGameFieldKind = "current";
+        this.fallbackRule = fallbackRule;
+        this.positional_rules = rules;
+        this.lastStepDiedCells = []
+    }
+
+    protected createGameField() {
+        return new ConwayField(this.xSize, this.ySize, this.borderRules);
+    }
+
+    get living_cell_count(): number{
+        return this.living_cell_count;
+    }
+
+    get activeField(): ConwayField {
+        if (this.activeGameFieldKind == "current") {
+            return this.currentGameField;
+        }
+        else {
+            return this.lastGameField;
+        }
+    }
+
+    get inactiveField(): ConwayField {
+        if (this.activeGameFieldKind == "current") {
+            return this.lastGameField;
+        }
+        else {
+            return this.currentGameField;
+        }
+    }
+
+    public setOnActiveField(xPos: number, yPos: number, cell: ConwayCell) {
+        this.activeField.setCell(xPos, yPos, cell);
+    }
+
+    public getCurrentCell(xPos: number, yPos: number): ConwayCell{
+        return this.activeField.getCell(xPos, yPos);
+    }
+
+    public nextState(): ConwayGame {
+        this.lastStepDiedCells = [];
+        for (let indexX = 0; indexX < this.xSize; indexX++) {
+            for (let indexY = 0; indexY < this.ySize; indexY++) {
+                this.inactiveField.getCell(indexX, indexY).reset();
+                this.positional_rules.forEach(rule => { // TODO dry this
+                    rule.applyRuleOnPos(indexX, indexY, this);
+                    let optional_cell: CellPosition | null = rule.getIfLastCellKilledAtPosition();
+                    if (optional_cell != null) {
+                        this.lastStepDiedCells.push(optional_cell)
+                    }
+                });
+                if (this.fallbackRuleShouldBeApplied(indexX, indexY)) {
+                    (<ShapedConwayGameRule>this.fallbackRule).applyRuleOnPos(indexX, indexY, this);
+                    let optional_cell: CellPosition | null = (<ShapedConwayGameRule>this.fallbackRule).getIfLastCellKilledAtPosition();
+                    if (optional_cell != null) {
+                        this.lastStepDiedCells.push(optional_cell)
+                    }
+                }
+            }
+        }
+        this.switchActiveGameField()
+        return this;
+    }
+
+    protected fallbackRuleShouldBeApplied(indexX: number, indexY: number) {
+        const positionalRulesApplicable = this.positional_rules.some((rule, i, arr) => rule.ruleCanBeApplied(new CellPosition(indexX, indexY)));
+        return !positionalRulesApplicable && this.fallbackRule != null;
+    }
+
+
+
+    protected switchActiveGameField(){
+        if (this.activeGameFieldKind == "last") {
+            this.activeGameFieldKind = "current";
+        }
+        else {
+            this.activeGameFieldKind = "last";
+        }
+    }
+
+    public getLastStepDiedCellPositions(): CellPosition[]{
+        return this.lastStepDiedCells;
+    }
+
+}
+
+interface GeneralGameRules{
+    createGameWithRule(conwayGame: ConwayGame): ConwayGame;
+}
+
+class ConwayGameAdvancer{
+    conwayGame: ConwayGame;
+    generalRules: GeneralGameRules[];
+
+    constructor(conwayGame: ConwayGame, generalRules: GeneralGameRules[]) {
+        this.conwayGame = conwayGame;
+        this.generalRules = generalRules;
+    }
+
+    public next_conway_game_with_rules(): ConwayGame {
+        let nextGame: ConwayGame = this.conwayGame;
+        for (const rule of this.generalRules) {
+            nextGame = rule.createGameWithRule(nextGame);
+        }
+        nextGame = nextGame.nextState(); // Problem how to optimize memory within this hmmm
+        this.conwayGame = nextGame;
+        return this.conwayGame;
+    }
+
+}
+
+class ConwayGameFactory{
+    xSize: number;
+    ySize: number;
+    rules: ShapedConwayGameRule[];
+    fallbackRule: ShapedConwayGameRule | null;
+    borderRules: "cutoff" | "extend";
+    aliveCellState: boolean;
+
+    constructor(xSize: number, ySize: number, rules: ShapedConwayGameRule[], aliveCellState: boolean, fallbackRule: ShapedConwayGameRule | null = null, borderRules: "cutoff" | "extend" = "cutoff") {
         this.xSize = xSize;
         this.ySize = ySize;
         this.rules = rules;
         this.borderRules = borderRules;
         this.aliveCellState = aliveCellState;
+        this.fallbackRule = fallbackRule;
     }
 
-    public centeredfPentomino(): ConwayGame<CELLSTATES> | null {
+    public centeredfPentomino(): ConwayGame | null {
         if (this.xSize < 3 && this.ySize < 3) {
             console.error("Cannot create a Pentomino in a field smaller than 3 times 3");
             return null;
         }
         let pos = this.get_center();
-        let conway_game: ConwayGame<CELLSTATES> = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.borderRules);
-        conway_game.setCell(pos.xPos, pos.yPos, new ConwayCell(this.aliveCellState));
-        conway_game.setCell(pos.xPos, pos.yPos + 1, new ConwayCell(this.aliveCellState));
-        conway_game.setCell(pos.xPos, pos.yPos - 1, new ConwayCell(this.aliveCellState));
-        conway_game.setCell(pos.xPos - 1, pos.yPos, new ConwayCell(this.aliveCellState));
-        conway_game.setCell(pos.xPos + 1, pos.yPos + 1, new ConwayCell(this.aliveCellState));
+        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.fallbackRule, this.borderRules);
+        conway_game.setOnActiveField(pos.xPos, pos.yPos, new BooleanCell(this.aliveCellState));
+        conway_game.setOnActiveField(pos.xPos, pos.yPos + 1, new BooleanCell(this.aliveCellState));
+        conway_game.setOnActiveField(pos.xPos, pos.yPos - 1, new BooleanCell(this.aliveCellState));
+        conway_game.setOnActiveField(pos.xPos - 1, pos.yPos, new BooleanCell(this.aliveCellState));
+        conway_game.setOnActiveField(pos.xPos + 1, pos.yPos + 1, new BooleanCell(this.aliveCellState));
         return conway_game;
     }
 
     public circle(radius: number, steps:number= 1/(2 * Math.PI), offsets: CellPosition[] = [new CellPosition(0, 0)]) { // TODO fix type + use
         let pos = this.get_center();
-        let conway_game: ConwayGame<CELLSTATES> = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.borderRules);        
+        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.fallbackRule, this.borderRules);        
         for (const offset of offsets) { // TODO calc overlap of shaped
             for (let radiusInc = 0; radiusInc < radius; radiusInc++) {
                 let posToRotate = new CellPosition(0, radiusInc);
                 for (let angle = 0; angle < 2 * Math.PI; angle += steps) {
                     let newXPos = pos.xPos - (Math.round(posToRotate.xPos * Math.cos(angle) + posToRotate.yPos * -1 * Math.sin(angle)));
                     let newYPos = pos.yPos + (Math.round(posToRotate.xPos * Math.sin(angle) + posToRotate.yPos * Math.cos(angle))); // TODO move pos calculation out
-                    conway_game.setCell(newXPos + offset.xPos, newYPos + offset.yPos, new ConwayCell(this.aliveCellState));
+                    conway_game.setOnActiveField(newXPos + offset.xPos, newYPos + offset.yPos, new BooleanCell(this.aliveCellState));
                 }
             }
         }
@@ -282,9 +421,9 @@ class ConwayGameFactory<CELLSTATES>{
 
     public yline(length: number) {
         let center = this.get_center();
-        let conway_game: ConwayGame<CELLSTATES> = new ConwayGame(this.xSize, this.ySize, null, this.rules, "cutoff");
+        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.fallbackRule, "cutoff");
         for (let curLength = 0; curLength < length; curLength++) {
-            conway_game.gameField[center.xPos][center.yPos + curLength] = new ConwayCell(this.aliveCellState); // TODO create y Positions
+            conway_game.setOnActiveField(center.xPos, center.yPos + curLength, new BooleanCell(this.aliveCellState)); // TODO create y Positions
         }
         return conway_game;
     }
@@ -295,13 +434,13 @@ class ConwayGameFactory<CELLSTATES>{
         return new CellPosition(middleX, middleY);
     }
 
-    public randomize_cells(alive_above: number = 3, scale_rand: number = 10): ConwayGame<CELLSTATES> {
-        let conway_game: ConwayGame<CELLSTATES> = new ConwayGame(this.xSize, this.ySize, null, this.rules, "cutoff");
+    public randomize_cells(alive_above: number = 3, scale_rand: number = 10): ConwayGame {
+        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.fallbackRule, "cutoff");
         for (let indexX = 0; indexX < this.xSize; indexX++) {
             for (let indexY = 0; indexY < this.ySize; indexY++) {
                 let rand_val = Math.round(Math.random() * scale_rand);
                 if (rand_val >= alive_above) {
-                    conway_game.setCell(indexX, indexY, new ConwayCell(this.aliveCellState));
+                    conway_game.setOnActiveField(indexX, indexY, new BooleanCell(this.aliveCellState));
                 }
             }
         }
@@ -370,23 +509,23 @@ class FadingCellColor extends CellColor{
 
 }
 
-class ConwayGameRepresenter<CELLSTATES>{
-    conway_game: ConwayGame<CELLSTATES>;
+class ConwayGameRepresenter{
+    conway_game: ConwayGame;
     default_cell_alive_repr: string = "🟩";
     default_cell_dead_repr: string = "⬜";
     cell_repr_alive: CellRepr;
     cell_repr_dead: CellRepr;
     cell_repr_transparent: CellRepr;
 
-    constructor(conway_game: ConwayGame<CELLSTATES>, config: ConfigStorage){
+    constructor(conway_game: ConwayGame, config: ConfigStorage){
         this.conway_game = conway_game;
         this.cell_repr_alive = config._alive_cell_color; 
         this.cell_repr_dead = config._dead_cell_color; 
         this.cell_repr_transparent = new CellColor(0, 0, 0, 0);
     }
     
-    protected representation(cell: ConwayCell<CELLSTATES>): string {
-        if (cell.is_alive) {
+    protected representation(cell: ConwayCell): string {
+        if (cell.isAlive) {
             return this.default_cell_alive_repr;
         }
         return this.default_cell_dead_repr;
@@ -396,7 +535,7 @@ class ConwayGameRepresenter<CELLSTATES>{
         let result_str = ""
         for (let indexX = 0; indexX < this.conway_game.xSize; indexX++) {
             for (let indexY = 0; indexY < this.conway_game.ySize; indexY++) {
-                let cell: ConwayCell<CELLSTATES> = this.conway_game.gameField[indexX][indexY];
+                let cell: ConwayCell = this.conway_game.getCurrentCell(indexX, indexY);
                 result_str += this.representation(cell);
             }
             result_str += "\n"
@@ -408,17 +547,17 @@ class ConwayGameRepresenter<CELLSTATES>{
         let result: CellRepr[] = new Array((this.conway_game.xSize) * (this.conway_game.ySize)).fill(this.cell_repr_transparent);
         for (let indexX = 0; indexX < this.conway_game.xSize; indexX++) {
             for (let indexY = 0; indexY < this.conway_game.ySize; indexY++) {
-                const cell: ConwayCell<CELLSTATES> = this.conway_game.getCell(indexX, indexY);
+                const cell: ConwayCell = this.conway_game.getCurrentCell(indexX, indexY);
                 let one_dim_ind = indexX + indexY * (this.conway_game.xSize);
-                result[one_dim_ind] = cell.is_alive ? this.cell_repr_alive : this.cell_repr_dead;
+                result[one_dim_ind] = cell.isAlive ? this.cell_repr_alive : this.cell_repr_dead;
             }
         }
         return result;
     }
 
     public number_color_arr(indexX: number, indexY: number): CellRepr{
-        const cell: ConwayCell<CELLSTATES> = this.conway_game.getCell(indexX, indexY);
-        return cell.is_alive ? this.cell_repr_alive : this.cell_repr_dead
+        const cell: ConwayCell = this.conway_game.getCurrentCell(indexX, indexY);
+        return cell.isAlive ? this.cell_repr_alive : this.cell_repr_dead
     }
 
 }
@@ -436,7 +575,7 @@ class AgingCellRepr{
         this.fading_cell_color = new FadingCellColor(start_cell_repr);
     }
 
-    get completlyFaded() {
+    get completelyFaded() {
         return this.current_life <= 0;
     }
 
@@ -455,7 +594,7 @@ class AgingCellRepr{
 }
 
 
-class ConwayHTMLDisplayer<CELLSTATES>{
+class ConwayHTMLDisplayer{
     canvas: HTMLCanvasElement | OffscreenCanvas | undefined;
     xPixels: number;
     yPixels: number;
@@ -485,7 +624,7 @@ class ConwayHTMLDisplayer<CELLSTATES>{
         }
     }
 
-    public addVisualTrailCellsAndAgeTrail(conway_game: ConwayGame<CELLSTATES>) {
+    public addVisualTrailCellsAndAgeTrail(conway_game: ConwayGame) {
         if (this.config.trail_length == 1) {
             return;
         }
@@ -499,10 +638,10 @@ class ConwayHTMLDisplayer<CELLSTATES>{
     }
 
 
-    public updateEmojiGameFieldAsString(conwayGame: ConwayGame<CELLSTATES>) {
+    public updateEmojiGameFieldAsString(conwayGame: ConwayGame) {
         let gameSpace = document.getElementById("gameField");
         if (gameSpace != null) {
-            let representer: ConwayGameRepresenter<CELLSTATES> = new ConwayGameRepresenter(conwayGame, this.config);
+            let representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
             gameSpace.innerHTML = representer.str_field();
         }
     }
@@ -538,11 +677,11 @@ class ConwayHTMLDisplayer<CELLSTATES>{
     //     }
     // }
 
-    async preprender_bitmap(conwayGame: ConwayGame<CELLSTATES>) {
+    async preprender_bitmap(conwayGame: ConwayGame) {
         if (!this.canvas) {
             throw Error("no canvas defined");
         }
-        const representer: ConwayGameRepresenter<CELLSTATES> = new ConwayGameRepresenter(conwayGame, this.config);
+        const representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
         const xSizeRect = this.canvas.width / conwayGame.xSize;
         const ySizeRect = this.canvas.height / conwayGame.ySize;
         let cur_res_index = 0;
@@ -553,7 +692,7 @@ class ConwayHTMLDisplayer<CELLSTATES>{
             for (let yPos = 0; yPos < conwayGame.ySize; yPos++) {
                 // const fadingCell: AgingCellRepr | undefined = this.posToCellWithVisualTrail.get(new CellPosition(xPos, yPos).toString());
                 //let cell_repr: CellRepr = this.faded_cell_repr_data_or_cell_repr(representer.number_color_arr(xPos, yPos) //, fadingCell);
-                if (conwayGame.getCell(xPos, yPos).is_alive) {
+                if (conwayGame.getCurrentCell(xPos, yPos).isAlive) { // TODO make representation function
                     alivePath.push([xPos * xSizeRect, yPos * ySizeRect, xSizeRect, ySizeRect]);
                 }
                 // context?.rect(xPos * xSizeRect, yPos * ySizeRect, xSizeRect, ySizeRect);
@@ -580,17 +719,17 @@ class ConwayHTMLDisplayer<CELLSTATES>{
         }
     }
 
-    public async getPreRenderedBitmap(conwayGame: ConwayGame<CELLSTATES>): Promise<ImageBitmap> {
+    public async getPreRenderedBitmap(conwayGame: ConwayGame): Promise<ImageBitmap> {
         if (this.preRenderCanvas == null) {
             await this.preprender_bitmap(conwayGame);
         }
         return <ImageBitmap>this.nextCanvasBitMap;
     }
 
-    public updategameFieldWithShapesFromPreRender(conwayGame: ConwayGame<CELLSTATES>, offsetX: number = 0, offsetY: number = 0) {
+    public updategameFieldWithShapesFromPreRender(conwayGame: ConwayGame, offsetX: number = 0, offsetY: number = 0) {
         this.addVisualTrailCellsAndAgeTrail(conwayGame);
         if (!this.canvas) {
-            console.error("Canvas is undefined and therfore not usable") 
+            console.error("Canvas is undefined and therefore not usable") 
             return;
         }
 
@@ -606,7 +745,7 @@ class ConwayHTMLDisplayer<CELLSTATES>{
 
     protected faded_cell_repr_data_or_cell_repr(original_cell_repr: CellRepr, opt_fading_cell: AgingCellRepr | undefined = undefined) {
         let cell_repr = original_cell_repr;
-        if (opt_fading_cell != undefined && !opt_fading_cell.completlyFaded && cell_repr == this.config.dead_cell_repr && opt_fading_cell.isAged) {
+        if (opt_fading_cell != undefined && !opt_fading_cell.completelyFaded && cell_repr == this.config.dead_cell_repr && opt_fading_cell.isAged) {
             cell_repr = opt_fading_cell.fading_cell_color;
         }
         return cell_repr;
@@ -660,12 +799,14 @@ class ConfigStorage {
 }
 
 const SURROUNDINGPOSITIONS = new Array(new CellPosition(-1, -1), new CellPosition(-1, 0), new CellPosition(-1, 1), new CellPosition(0, 1), new CellPosition(0, -1), new CellPosition(1, 1), new CellPosition(1, 0), new CellPosition(1, -1));
-const DEFAULTGAMERULE = new Array(new ShapedConwayGameRule(null, true, SURROUNDINGPOSITIONS, [2,3], [3]));
-const MULTIPLICATIONGAMERULE = new Array(new ShapedConwayGameRule(null, true, SURROUNDINGPOSITIONS, [2], [2]));
-const COPYGAMERULES = new Array(new ShapedConwayGameRule(null, true, SURROUNDINGPOSITIONS, [1, 3, 5, 7], [1, 3, 5, 7]));
-const WORLD33RULES = new Array(new ShapedConwayGameRule(null, true, SURROUNDINGPOSITIONS, [3], [3]));
-const WORLD236RULES = new Array(new ShapedConwayGameRule(null, true, SURROUNDINGPOSITIONS, [2, 3, 6], [3]));
-const SNAKEKINGRULEIDEA = new Array(new ShapedConwayGameRule(null, true, SURROUNDINGPOSITIONS, [2], [2]));
-const WORLD44RULES = new Array(new ShapedConwayGameRule(null, true, SURROUNDINGPOSITIONS, [3], [2]));
+const DEFAULTGAMERULE = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2,3], [3]));
+const MULTIPLICATIONGAMERULE = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2], [2]));
+const COPYGAMERULES = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [1, 3, 5, 7], [1, 3, 5, 7]));
+const WORLD33RULES = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [3], [3]));
+const WORLD236RULES = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2, 3, 6], [3]));
+const SNAKEKINGRULEIDEA = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2], [2]));
+const WORLD44RULES = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [3], [2]));
+// TODO make this rule with RELATIVE position on the field
+const CENTERDEFAULTGAMERULE = new Array(new ShapedConwayGameRule(new Rectangle(new CellPosition(100, 0), new CellPosition(200, 200)), SURROUNDINGPOSITIONS, [2,3], [3]))
 
-export {ConwayCell, ConwayGame, ConwayGameFactory, DEFAULTGAMERULE, ConwayHTMLDisplayer, ConwayGameRepresenter, CellColor, ConfigStorage, CellPosition, AgingCellRepr, MULTIPLICATIONGAMERULE};
+export {ConwayCell, ConwayGame, ConwayGameFactory, CENTERDEFAULTGAMERULE, DEFAULTGAMERULE, ConwayHTMLDisplayer, ConwayGameRepresenter, CellColor, ConfigStorage, CellPosition, AgingCellRepr, MULTIPLICATIONGAMERULE, BooleanCell};

@@ -25,7 +25,7 @@ declare class ConwayGameRule {
     dead_goes_to_result_state_with_neighbours: number[];
     last_cell_which_died: CellPosition | null;
     constructor(result_state: boolean, viewed_cells: CellPosition[], alive_goes_to_result_state_with_neighbours?: number[], dead_goes_to_result_state_with_neighbours?: number[]);
-    applyRuleToGame(xPos: number, yPos: number, old_conway_game: ConwayGame, new_conway_game: ConwayGame): ConwayGame;
+    applyRuleOnPos(xPos: number, yPos: number, old_conway_game: ConwayGame, new_conway_game: ConwayGame): ConwayGame;
     getIfLastCellKilledAtPosition(): CellPosition | null;
 }
 declare class ConwayGame {
