@@ -632,9 +632,14 @@ class ConwayHTMLDisplayer{
         new_cell_trail_positions.forEach((pos, i, arr) => {
             this.posToCellWithVisualTrail.set(pos.toString(), new AgingCellRepr(pos, this.config.trail_length, this.config.alive_cell_repr))
         });
-        this.posToCellWithVisualTrail.forEach((val, key, map) => {
+        for (const [posString, val] of this.posToCellWithVisualTrail.entries()) {
             val.age()
-        })
+            let agingRepr: AgingCellRepr | undefined = this.posToCellWithVisualTrail.get(posString);
+            if (agingRepr != undefined && agingRepr?.current_life <= 0) {
+                this.posToCellWithVisualTrail.delete(posString);
+            }
+        }
+        
     }
 
 
@@ -686,27 +691,39 @@ class ConwayHTMLDisplayer{
         const ySizeRect = this.canvas.height / conwayGame.ySize;
         let cur_res_index = 0;
         let alivePath = [];
-        // let deadPath = [];
-        let fadingPaths = [];
+        let fadingPaths: Map<number, {cell_repr: CellRepr, paths: number[][]}> = new Map();
         for (let xPos = 0; xPos < conwayGame.xSize; xPos++) {
             for (let yPos = 0; yPos < conwayGame.ySize; yPos++) {
-                // const fadingCell: AgingCellRepr | undefined = this.posToCellWithVisualTrail.get(new CellPosition(xPos, yPos).toString());
-                //let cell_repr: CellRepr = this.faded_cell_repr_data_or_cell_repr(representer.number_color_arr(xPos, yPos) //, fadingCell);
-                if (conwayGame.getCurrentCell(xPos, yPos).isAlive) { // TODO make representation function
+                if (conwayGame.getCurrentCell(xPos, yPos).isAlive) {
                     alivePath.push([xPos * xSizeRect, yPos * ySizeRect, xSizeRect, ySizeRect]);
                 }
-                // context?.rect(xPos * xSizeRect, yPos * ySizeRect, xSizeRect, ySizeRect);
-                // context.fillStyle = representer.number_color_arr(xPos, yPos).rgba_str;
+                const fadingCell: AgingCellRepr | undefined = this.posToCellWithVisualTrail.get(new CellPosition(xPos, yPos).toString());
+                if (fadingCell != undefined) {
+                    if (!fadingPaths.has(fadingCell.current_life)){
+                        fadingPaths.set(fadingCell.current_life, {"cell_repr": fadingCell.fading_cell_color, "paths": []});
+                    }
+                    let fadingPath = fadingPaths.get(fadingCell.current_life)?.paths;
+                    fadingPath?.push([xPos * xSizeRect, yPos * ySizeRect, xSizeRect, ySizeRect]);
+                }
                 cur_res_index++;
             }
         }
-        let new_context = this.preRenderCanvas?.getContext("2d", { alpha: false });
+        let new_context = this.preRenderCanvas?.getContext("2d", { alpha: false }); // TODO move context to state
         if (new_context == null) {
             throw Error("No Context exists");
         }
         new_context.imageSmoothingEnabled = false;
         new_context.fillStyle = representer.cell_repr_dead.rgba_str;
         new_context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        for (const { cell_repr, paths } of fadingPaths.values()) {
+            new_context.fillStyle = cell_repr.rgba_str;
+            new_context?.beginPath()
+            for (const path of paths) {
+                new_context.rect(path[0], path[1], path[2], path[3]);
+            }
+            new_context?.closePath();
+            new_context?.fill();
+        }
         new_context?.beginPath()
         new_context.fillStyle = representer.cell_repr_alive.rgba_str;
         for (const path of alivePath) {
@@ -743,13 +760,14 @@ class ConwayHTMLDisplayer{
         this.nextCanvasBitMap = null;
     }
 
-    protected faded_cell_repr_data_or_cell_repr(original_cell_repr: CellRepr, opt_fading_cell: AgingCellRepr | undefined = undefined) {
-        let cell_repr = original_cell_repr;
-        if (opt_fading_cell != undefined && !opt_fading_cell.completelyFaded && cell_repr == this.config.dead_cell_repr && opt_fading_cell.isAged) {
-            cell_repr = opt_fading_cell.fading_cell_color;
-        }
-        return cell_repr;
-    }
+    // protected faded_cell_repr_data_or_cell_repr(original_cell_repr: CellRepr, opt_fading_cell: AgingCellRepr | undefined = undefined) {
+    //     let cell_repr = original_cell_repr;
+    //     console.log((opt_fading_cell != undefined) + " " + (!opt_fading_cell?.completelyFaded) + "" + (cell_repr == this.config.dead_cell_repr) + "" + (opt_fading_cell?.isAged));
+    //     if (opt_fading_cell != undefined && !opt_fading_cell.completelyFaded && cell_repr == this.config.dead_cell_repr && opt_fading_cell.isAged) {
+    //         cell_repr = opt_fading_cell.fading_cell_color;
+    //     }
+    //     return cell_repr;
+    // }
 
 
     public displayGeneration(generation: number) {
@@ -770,7 +788,7 @@ class ConfigStorage {
     _alive_cell_color: CellRepr;
     _dead_cell_color: CellRepr;
     _display_trails: number;
-    public constructor(color_alive: CellColor = new CellColor(255, 255, 255, 255), color_dead: CellColor = new CellColor(0, 0, 20, 255), display_trails=1) {
+    public constructor(color_alive: CellColor = new CellColor(255, 255, 255, 255), color_dead: CellColor = new CellColor(0, 0, 20, 255), display_trails=3) {
         this._alive_cell_color = color_alive;
         this._dead_cell_color = color_dead;
         this._display_trails = Math.max(1, display_trails);
