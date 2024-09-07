@@ -9,18 +9,18 @@ body {
     align-items: center;
 }
 html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
+    height: 100vh;
+    width: 100vw;
     overflow: clip;
-    background-color: black;
+    background-color: grey;
 }
 .gameFieldDiv {
     height: 100vh;
     width: 100vw;
-    background-color: black;
+    background-color: grey;
     flex-shrink: 0;
+    box-sizing: border-box;
 }
 #gameFieldCanvas{
-    background-color: black;
+    background-color: grey;
 }
