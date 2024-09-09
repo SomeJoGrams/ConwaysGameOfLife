@@ -923,7 +923,6 @@ const WORLD33RULES = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIO
 const WORLD236RULES = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2, 3, 6], [3]));
 const SNAKEKINGRULEIDEA = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2], [2]));
 const WORLD44RULES = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [3], [2]));
-// TODO make this rule with RELATIVE position on the field
 const CENTERDEFAULTGAMERULE = new Array(new ShapedConwayGameRule(new Rectangle(new CellPosition(100, 0), new CellPosition(200, 200)), SURROUNDINGPOSITIONS, [2,3], [3]))
 
 export {
