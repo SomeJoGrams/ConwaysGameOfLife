@@ -1,5 +1,5 @@
 import {describe, expect, test} from '@jest/globals';
-import { ConwayGame, ConwayGameRepresenter, BooleanCell, CellColor, ConfigStorage, CellPosition, DEFAULTGAMERULE, ConwayHTMLDisplayer, AgingCellRepr} from "../src/main/game_of_life_default";
+import { ConwayGame, ConwayGameRepresenter, BooleanCell, CellColor, ConfigStorage, CellPosition, DEFAULTGAMERULE, ConwayHTMLDisplayer, AgingCellRepr, ConwayGameAdvancer} from "../src/main/game_of_life_default";
 
 describe("gamefield representation", () => {
     test("Create small Conway field", () => {
@@ -128,6 +128,59 @@ describe("Template value", () => {
     //     cell.reset();
     //     expect(cell.isAlive).toBe(0);
     // });
+
+});
+
+describe("Test ConwayGameAdvancer", () => {
+    test("Path Calculation diagonal", () => {
+        let conwayGame = new ConwayGameAdvancer(4, 4, null, [], undefined, "cutoff", []);
+        let path: CellPosition[] = conwayGame.calcPath({ startPos: new CellPosition(0, 0), endPos: new CellPosition(3, 3) });
+        expect(path).toHaveLength(4);
+        expect(path).toStrictEqual([new CellPosition(0, 0), new CellPosition(1, 1), new CellPosition(2, 2), new CellPosition(3, 3)]);
+    }, 10)
+
+    test("Path Calculation x line", () => {
+        let conwayGame = new ConwayGameAdvancer(4, 4, null, [], undefined, "cutoff", []);
+        let path: CellPosition[] = conwayGame.calcPath({ startPos: new CellPosition(0, 0), endPos: new CellPosition(3, 0) });
+        expect(path).toHaveLength(4);
+        expect(path).toStrictEqual([new CellPosition(0, 0), new CellPosition(1, 0), new CellPosition(2, 0), new CellPosition(3, 0)]);
+    }, 10)
+
+    
+    test("Path Calculation y line", () => {
+        let conwayGame = new ConwayGameAdvancer(4, 4, null, [], undefined, "cutoff", []);
+        let path: CellPosition[] = conwayGame.calcPath({ startPos: new CellPosition(0, 0), endPos: new CellPosition(0, 3) });
+        expect(path).toHaveLength(4);
+        expect(path).toStrictEqual([new CellPosition(0, 0), new CellPosition(0, 1), new CellPosition(0, 2), new CellPosition(0, 3)]);
+    }, 10)
+
+    test("Path Calculation descending uneven line", () => {
+        let conwayGame = new ConwayGameAdvancer(4, 4, null, [], undefined, "cutoff", []);
+        let path: CellPosition[] = conwayGame.calcPath({ startPos: new CellPosition(0, 3), endPos: new CellPosition(3, 1) });
+        expect(path).toStrictEqual([new CellPosition(3, 1), new CellPosition(2, 1), new CellPosition(2, 2), new CellPosition(1, 2), new CellPosition(0,3)]);
+    }, 10)
+
+    test("Path Calculation descending uneven line inverted", () => {
+        let conwayGame = new ConwayGameAdvancer(4, 4, null, [], undefined, "cutoff", []);
+        let path: CellPosition[] = conwayGame.calcPath({ startPos: new CellPosition(3, 1), endPos: new CellPosition(0, 3) });
+        expect(path).toStrictEqual([new CellPosition(3, 1), new CellPosition(2, 1), new CellPosition(2, 2), new CellPosition(1, 2), new CellPosition(0,3)]);
+    }, 10)
+
+    test("Path Calculation diagonal 2", () => {
+        let conwayGame = new ConwayGameAdvancer(4, 4, null, [], undefined, "cutoff", []);
+        let path: CellPosition[] = conwayGame.calcPath({ startPos: new CellPosition(0, 3), endPos: new CellPosition(3, 0) });
+        expect(path).toStrictEqual([new CellPosition(3, 0), new CellPosition(2, 1), new CellPosition(1, 2), new CellPosition(0,3)]);
+    }, 10)
+
+    test("Path Calculation ascending", () => {
+        let conwayGame = new ConwayGameAdvancer(4, 4, null, [], undefined, "cutoff", []);
+        let path: CellPosition[] = conwayGame.calcPath({ startPos: new CellPosition(0, 2), endPos: new CellPosition(4, 4) });
+        expect(path).toStrictEqual([new CellPosition(0, 2), new CellPosition(1, 2), new CellPosition(1, 3), new CellPosition(2, 3), new CellPosition(2, 3), new CellPosition(3, 3), new CellPosition(3, 4),
+            new CellPosition(4,4), new CellPosition(4,4) // TODO remove duplicates
+        ]);
+    }, 10)
+
+
 
 });
 

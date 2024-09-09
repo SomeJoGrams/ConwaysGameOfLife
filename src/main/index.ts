@@ -1,13 +1,20 @@
 import printMe from '../main/print'; // for testing webpck
 import "../../resources/css/main.css"
 let gamefield_template = require("../../resources/html_templates/partials/game_field.hbs");
-let uiWorker: Worker | null = null
+let uiWorker: Worker | null = null;
+
+function initMissingUiWorker(){
+    if (uiWorker == null) {
+        uiWorker = new Worker(new URL("../workers/canvas_worker.ts", import.meta.url));
+    }    
+    return uiWorker;
+}
 
 function startWindowWorker(canvas: HTMLCanvasElement, canvas2: HTMLCanvasElement): OffscreenCanvas | undefined {
     let offscreenCanvas: OffscreenCanvas | undefined = undefined;
     let offscreenCanvas2: OffscreenCanvas | undefined = undefined;
+    uiWorker = initMissingUiWorker()
     if (window.Worker) {
-        uiWorker = new Worker(new URL("../workers/canvas_worker.ts", import.meta.url));
         offscreenCanvas = canvas.transferControlToOffscreen()
         offscreenCanvas2 = canvas2.transferControlToOffscreen()
         uiWorker.postMessage({ message: "start", canvas: offscreenCanvas, prerenderCanvas: offscreenCanvas2 }, [offscreenCanvas, offscreenCanvas2]);
@@ -17,6 +24,20 @@ function startWindowWorker(canvas: HTMLCanvasElement, canvas2: HTMLCanvasElement
     }
     return offscreenCanvas;
 }    
+
+function addMousePositionEventHandler() {
+    uiWorker = initMissingUiWorker();
+    document.addEventListener("mousemove", mouseListening);
+}
+
+function removeMousePositionEventHandler() {
+    document.removeEventListener("mousemove", mouseListening);
+}
+
+function mouseListening(event: MouseEvent) {
+    uiWorker?.postMessage({ message: "mouseposition", xPos: event.pageX, yPos: event.pageY })
+}
+
 
 function create_missing_html_canvas_on_gamefield() : HTMLCanvasElement{
     let gameSpace = document.getElementById("gameField");
@@ -51,7 +72,11 @@ function append_game_field_from_template() {
         let hiddenCanvas = document.createElement("canvas");
         canvas.style.width = "100vw";
         canvas.style.height = "100vh";
+        addMousePositionEventHandler();
         startWindowWorker(canvas, hiddenCanvas);
+        // if (uiWorker) {
+        //     uiWorker.postMessage({message: "setColorAlive", rgba: [123,123,123,255]})  // TODO Continue hereuse a message channel
+        // }
         printMe()
     })
 })();
