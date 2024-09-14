@@ -74,9 +74,23 @@ function append_game_field_from_template() {
         canvas.style.height = "100vh";
         addMousePositionEventHandler();
         startWindowWorker(canvas, hiddenCanvas);
+        if (uiWorker) {
+            console.log("Posting Message For resolution")
+            uiWorker.postMessage({ message: "setXResolution", width: window.innerWidth });
+            uiWorker.postMessage({ message: "setScreenRatio", screen_ratio: window.innerHeight / window.innerWidth });
+        }
         // if (uiWorker) {
         //     uiWorker.postMessage({message: "setColorAlive", rgba: [123,123,123,255]})  // TODO Continue hereuse a message channel
         // }
         printMe()
     })
 })();
+
+
+const onResize = (): void => {
+    if (uiWorker) {
+        uiWorker.postMessage({ message: "setXResolution", width: window.innerWidth });
+        uiWorker.postMessage({ message: "setScreenRatio", screen_ratio: window.innerHeight / window.innerWidth });
+}
+}
+window.addEventListener("resize", onResize)

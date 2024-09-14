@@ -219,7 +219,7 @@ describe("ConwayHTMLDisplayer tests and trail calculation", () => {
         conwayGame.getCurrentCell(2, 1).nextState();
         conwayGame.getCurrentCell(1, 2).nextState();
         const nextConwayGame = conwayGame.nextState();
-        const conwayHTMLDisplayer = new ConwayHTMLDisplayer(undefined, 5, 5, new ConfigStorage(CellColor.WHITE, CellColor.BLACK, 2));
+        const conwayHTMLDisplayer = new ConwayHTMLDisplayer(undefined, new ConfigStorage(CellColor.WHITE, CellColor.BLACK, 2));
         conwayHTMLDisplayer.addVisualTrailCellsAndAgeTrail(nextConwayGame);
         // conwayHTMLDisplayer.posToCellWithVisualTrail.forEach((c, k, m) => console.log("key" + k + " val " + c));
         let position1_0 = new CellPosition(1, 0);
@@ -271,4 +271,37 @@ describe("ConwayHTMLDisplayer tests and trail calculation", () => {
         fading_cell.age();
         expect(fading_cell.completelyFaded).toBe(true);
     })
+
+    test("Game to cell mapping", () => {
+        const conwayGame = new ConwayGame(5, 5, null, [], null, "cutoff");
+        const displayer = new ConwayHTMLDisplayer(undefined, new ConfigStorage(undefined, undefined, 1, 5, 1));
+        const position = displayer.mapToConwayFieldPosition({ startPos: new CellPosition(1,1), endPos: new CellPosition(1,2)}, conwayGame);
+        expect(position.startPos).toStrictEqual(new CellPosition(1, 1));
+        expect(position.endPos).toStrictEqual(new CellPosition(1, 2));
+    })
+
+    test("Game to cell mapping 2", () => {
+        const conwayGame = new ConwayGame(5, 5, null, [], null, "cutoff");
+        const displayer = new ConwayHTMLDisplayer(undefined, new ConfigStorage(undefined, undefined, 1, 5, 1));
+        const position = displayer.mapToConwayFieldPosition({ startPos: new CellPosition(5,5), endPos: new CellPosition(5,5)}, conwayGame);
+        expect(position.startPos).toStrictEqual(new CellPosition(5, 5));
+        expect(position.endPos).toStrictEqual(new CellPosition(5, 5));
+    })
+
+    test("Game to cell mapping, Conway Game Field Greater", () => {
+        const conwayGame = new ConwayGame(10, 10, null, [], null, "cutoff");
+        const displayer = new ConwayHTMLDisplayer(undefined, new ConfigStorage(undefined, undefined, 1, 5, 1));
+        const position = displayer.mapToConwayFieldPosition({ startPos: new CellPosition(5,5), endPos: new CellPosition(5,5)}, conwayGame);
+        expect(position.startPos).toStrictEqual(new CellPosition(10, 10));
+        expect(position.endPos).toStrictEqual(new CellPosition(10, 10));
+    })
+
+    test("Game to cell mapping, Canvas Field Greater", () => {
+        const conwayGame = new ConwayGame(5, 5, null, [], null, "cutoff");
+        const displayer = new ConwayHTMLDisplayer(undefined, new ConfigStorage(undefined, undefined, 1, 100, 1));
+        const position = displayer.mapToConwayFieldPosition({ startPos: new CellPosition(5,5), endPos: new CellPosition(5,5)}, conwayGame);
+        expect(position.startPos).toStrictEqual(new CellPosition(0, 0));
+        expect(position.endPos).toStrictEqual(new CellPosition(0, 0));
+    })
+
 });

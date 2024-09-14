@@ -3,45 +3,51 @@ import { ConwayGame, ConwayGameAdvancer, ConwayGameFactory, CENTERDEFAULTGAMERUL
 
 let CONWAYCONFIG = new ConfigStorage();
 self.onmessage = (event) => {
-    console.log("Worker received message " + event.data)
-    type receivableMessages = "start" | "setColorAlive" | "setColorDead" | "mouseposition" | "setPixelSize";
+    console.debug("Worker received message " + event.data)
+    type receivableMessages = "start" | "setColorAlive" | "setColorDead" | "mouseposition" | "setPixelSize" | "setXResolution" | "setScreenRatio";
     let received_data: { message: "start", canvas?: OffscreenCanvas, prerenderCanvas?: OffscreenCanvas }
-                    | { message: "setColorAlive" |  "setColorDead", rgba: [number, number, number, number] }
-                    |  { message: "mouseposition" | "setPixelSize", [key: string]: any } = event.data
-    // let received_data: {message: string, canvas: OffscreenCanvas, prerenderCanvas: OffscreenCanvas} = event.data
-    // console.log(received_data)
-    if (received_data.message == "start") {
-        if (received_data.canvas == undefined || received_data.prerenderCanvas == undefined) {
-            throw Error("Start is missing arguments")
-        }
-        let mainCanvas: OffscreenCanvas = received_data.canvas;
-        let optCanvas: OffscreenCanvas = received_data.prerenderCanvas;
-        start_conway_game_on_canvas(mainCanvas, optCanvas);
-    }
-    else if (received_data.message == "setColorAlive") {
-        CONWAYCONFIG.set_alive_cell_color = received_data.rgba; // TODO make this also be able to take a function / or use a predefined function
-    }
-    else if (received_data.message == "setColorDead") {
-        CONWAYCONFIG.set_dead_cell_color = received_data.rgba;
-    }
-    else if (received_data.message == "mouseposition") {
-        if (CONWAYCONFIG.getMousePositionHandler == null) {
-            CONWAYCONFIG.mousePositionHandler = new MousePositionHandler(received_data.xPos, received_data.yPos);
-        }
-        else {
-            (<MousePositionHandler>CONWAYCONFIG.getMousePositionHandler).updateMousePos(received_data.xPos, received_data.yPos);
-        }
-    }
-    else {
-        console.error("Unknown message" + received_data);
+        | { message: "setColorAlive" | "setColorDead", rgba: [number, number, number, number] }
+        | { message: "setXResolution", width: number }
+        | { message: "setScreenRatio", screen_ratio: number }
+        | { message: "mouseposition" | "setPixelSize", [key: string]: any } = event.data
+    switch (received_data.message) {
+        case "start":
+            if (received_data.canvas == undefined || received_data.prerenderCanvas == undefined) {
+                throw Error("Start is missing arguments")
+            }
+            let mainCanvas: OffscreenCanvas = received_data.canvas;
+            let optCanvas: OffscreenCanvas = received_data.prerenderCanvas;
+            start_conway_game_on_canvas(mainCanvas, optCanvas);
+            break;
+        case "setXResolution":
+            console.debug("Worker received resolution message" + received_data)
+            CONWAYCONFIG.x_resolution = received_data.width;
+            break;
+        case "setScreenRatio":
+            console.debug("Worker received screen ratio message" + received_data.screen_ratio)
+            CONWAYCONFIG.screen_ratio = received_data.screen_ratio;
+            break;
+        case "setColorAlive":
+            CONWAYCONFIG.set_alive_cell_color = received_data.rgba; // TODO make this also be able to take a function / or use a predefined function
+            break;
+        case "setColorDead":
+            CONWAYCONFIG.set_dead_cell_color = received_data.rgba;
+            break;
+        case "mouseposition":
+            if (CONWAYCONFIG.getMousePositionHandler == null) {
+                CONWAYCONFIG.mousePositionHandler = new MousePositionHandler(received_data.xPos, received_data.yPos);
+            }
+            else {
+                (<MousePositionHandler>CONWAYCONFIG.getMousePositionHandler).updateMousePos(received_data.xPos, received_data.yPos);
+            }
+            break;
+        default:
+            console.error("Unknown data" + received_data);
+            console.error("Unknown message" + received_data.message);
+            break;
     }
 }
 
-
-
-function sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}   	
 
 function bpm() { // TODO add audio spikes for bpm
     return 100;
@@ -55,27 +61,18 @@ function get_ratio_y_to_x(x: number, canvas: OffscreenCanvas) { // TODO use offs
     return Math.ceil(x * 0.5625);
 }
 
-function mapToConwayFieldPosition(pos: {startPos: CellPosition, endPos: CellPosition}, xSizeCanvas: number, ySizeCanvas: number, xSizeField: number, ySizeField: number) {
-    return {
-        startPos: new CellPosition((pos.startPos.xPos / xSizeCanvas) * xSizeField, (pos.startPos.yPos / ySizeCanvas) * ySizeField) , 
-        endPos: new CellPosition((pos.endPos.xPos / xSizeCanvas) * xSizeField, (pos.endPos.yPos / ySizeCanvas) * ySizeField)
-    }
-}
-
 
 
 function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: OffscreenCanvas) {
+    let fps = 30;
     const x_pixel_default = 150;
     const y_pixel_default = get_ratio_y_to_x(x_pixel_default, canvas);
-    const x_canvas_pixel_default = 1920;
-    const y_canvas_pixel_default = get_ratio_y_to_x(x_canvas_pixel_default, canvas);
     const conwayGameFactory = new ConwayGameFactory(x_pixel_default, y_pixel_default, CENTERDEFAULTGAMERULE, true, MULTIPLICATIONGAMERULE[0], "extend"); // todo real screen proportions, e.g. window is sized
-    let currentConwayGameOriginal: ConwayGame = conwayGameFactory.circle(50, (1 / 50) * Math.PI, []);
+    let currentConwayGameOriginal: ConwayGame = conwayGameFactory.circle(20, (1 / 20) * Math.PI, [new CellPosition(0, 0)]);
     let currentConwayGame: ConwayGameAdvancer = ConwayGameAdvancer.fromConwayGame(currentConwayGameOriginal, undefined);
-    const field_drawer: ConwayHTMLDisplayer = new ConwayHTMLDisplayer(canvas, x_canvas_pixel_default, y_canvas_pixel_default, CONWAYCONFIG, null, prerenderCanvas);
-    field_drawer.updategameFieldWithShapesFromPreRender(currentConwayGame);   
+    const field_drawer: ConwayHTMLDisplayer = new ConwayHTMLDisplayer(canvas, CONWAYCONFIG, null, prerenderCanvas);
+    field_drawer.updategameFieldWithShapesFromPreRender(currentConwayGame);
     // field_drawer.displayGeneration(-1);
-    let fps = 60;
     let gameStateUpdateSeconds = 0.2;
     let start: number = performance.now();
     let gameStateStart: number = start;
@@ -92,21 +89,23 @@ function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: O
         // field_drawer.displayGeneration(generation); // TODO posting back to dom
         if (elapsed_game_state > (gameStateUpdateSeconds * 1000)) {
             gameStateStart = timeStamp;
-            updateConwayGame(); // no image while its loading
+            updateConwayGame();
         }
-        if (elapsed > 1000/fps && timeout_update_received) {
+        if (elapsed > 1000 / fps && timeout_update_received) {
             field_drawer.updategameFieldWithShapesFromPreRender(currentConwayGame);
             timeout_update_received = false;
         }
-        requestAnimationFrame((t) => draw_conway_game(t)); 
+        requestAnimationFrame((t) => draw_conway_game(t));
     }
     let generation: number = -1;
     function updateConwayGame() {
         if (currentConwayGame) {
             currentConwayGame.nextState();
-            const pos = CONWAYCONFIG._mousePositionHandler?.getAndResetPath();
+            const pos = CONWAYCONFIG.getMousePositionHandler?.getAndResetPath();
             if (pos != null) {
-                const posFixed = mapToConwayFieldPosition(pos, x_canvas_pixel_default, y_canvas_pixel_default, x_pixel_default, y_pixel_default);
+                console.debug("adding path at" + pos.startPos + "to " + pos.endPos);
+                const posFixed = field_drawer.mapToConwayFieldPosition(pos, currentConwayGame);
+                console.debug("mapped path to" + posFixed.startPos + "to " + posFixed.endPos);
                 currentConwayGame.addPath(posFixed);
             }
             field_drawer.preprender_bitmap(currentConwayGame).then(f => (timeout_update_received = true));
