@@ -697,37 +697,6 @@ class ConwayHTMLDisplayer {
         }
     }
 
-    // TODO fix function
-    // public updategameFieldPixelsAsCanvas(conwayGame: ConwayGame, offsetX: number = 0, offsetY: number = 0) {
-    //     this.addVisualTrailCellsAndAgeTrail(conwayGame);
-    //     const representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
-    //     if (!this.canvas) { // TODO fix
-    //         console.error("Canvas is undefined");
-    //         return;
-    //     }
-    //     let context = this.canvas.getContext("2d");
-    //     this.configure_canvas();
-    //     const imageData = context?.createImageData(offsetX, offsetY);
-    //     if (!imageData) {
-    //         return;
-    //     }
-    //     const number_color_arr: CellRepr[] = representer.as_number_colors_arr();
-    //     let cur_res_index = 0;
-    //     for (let i = 0; i < imageData.data.length; i += 4) { // TODO just flatten, how to do that with ro props
-    //         let cell_repr: CellRepr = number_color_arr[cur_res_index];
-    //         let cell_repr_data = cell_repr.data;
-    //         imageData.data[i + 0] = cell_repr_data[0]; // R value
-    //         imageData.data[i + 1] = cell_repr_data[1]; // G value
-    //         imageData.data[i + 2] = cell_repr_data[2]; // B value
-    //         imageData.data[i + 3] = cell_repr_data[3]; // A value
-    //         cur_res_index += 1;
-    //     }
-    //     context?.putImageData(imageData, offsetX, offsetY);
-    //     if (context) {
-    //         context.imageSmoothingEnabled = false;
-    //     }
-    // }
-
     async preprender_bitmap(conwayGame: ConwayGame) {
         if (!this.canvas) {
             throw Error("no canvas defined");
