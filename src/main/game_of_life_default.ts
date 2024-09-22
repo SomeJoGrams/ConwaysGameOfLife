@@ -891,12 +891,17 @@ class ConfigState {
     private _mousePositionHandler: MousePositionHandler | null;
     private _screen_ratio: number;
     private _x_resolution: number;
+    private currentBPM: number = 60;
     game_settings_updated: boolean; // TODO equality check on attributes
 
     private readonly screen_change_event: SimpleEvent<void> = new SimpleEvent<void>();
 
     public onScreenChange(): ISimpleEvent<void>{
         return this.screen_change_event.expose()
+    }
+
+    get bpm() { // TODO add audio spikes for bpm
+        return this.currentBPM;
     }
 
     public constructor(color_alive: CellColor = new CellColor(255, 255, 255, 255), color_dead: CellColor = new CellColor(0, 0, 20, 255), display_trails = 3,
@@ -956,6 +961,10 @@ class ConfigState {
 
     get trail_length(): number {
         return this._display_trails;
+    }
+
+    get bpm_timeout_seconds() {
+        return 1 / (this.bpm / 60);
     }
 
 }

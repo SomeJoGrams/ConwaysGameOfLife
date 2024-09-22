@@ -12,7 +12,6 @@ Some really nice complex shapes can follow from this simple rules already.
     * Make rule positions relative
     * Prerender updates with mouse positions immediately
     * Split files into view(ConwayFieldDisplayer/CellRepr) / state (ConwayGame)
-    * Add music bpm cell evolution(wallpaper engine)
     * Add a config menu (without wallpaper engine)
     * unify coding style, make everything snake case
     * add shorthand notion for rules
@@ -23,3 +22,4 @@ Some really nice complex shapes can follow from this simple rules already.
     * Add ShapeRuleFactory creating rules from rules
     * Move messages to separate class
     * add hexagonal field
+    * test dependencies for building

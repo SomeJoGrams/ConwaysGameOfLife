@@ -1,30 +1,50 @@
 import { config } from "webpack";
-import { ConwayGame, ConwayGameAdvancer, ConwayGameFactory, CENTERDEFAULTGAMERULE, DEFAULTGAMERULE, ConwayHTMLDisplayer, ConfigStorage, CellColor, CellPosition, MULTIPLICATIONGAMERULE, MousePositionHandler } from "../main/game_of_life_default";
+import {
+    ConwayGame,
+    ConwayGameAdvancer,
+    ConwayGameFactory,
+    CENTERDEFAULTGAMERULE,
+    DEFAULTGAMERULE,
+    ConwayHTMLDisplayer,
+    ConfigStorage,
+    CellColor,
+    CellPosition,
+    MULTIPLICATIONGAMERULE,
+    MousePositionHandler,
+} from "../main/game_of_life_default";
 
 let CONWAYCONFIG = new ConfigStorage();
 self.onmessage = (event) => {
-    console.debug("Worker received message " + event.data)
-    type receivableMessages = "start" | "setColorAlive" | "setColorDead" | "mouseposition" | "setPixelSize" | "setXResolution" | "setScreenRatio";
-    let received_data: { message: "start", canvas?: OffscreenCanvas, prerenderCanvas?: OffscreenCanvas }
-        | { message: "setColorAlive" | "setColorDead", rgba: [number, number, number, number] }
-        | { message: "setXResolution", width: number }
-        | { message: "setScreenRatio", screen_ratio: number }
-        | { message: "mouseposition" | "setPixelSize", [key: string]: any } = event.data
+    console.debug("Worker received message " + event.data);
+    type receivableMessages =
+        | "start"
+        | "setColorAlive"
+        | "setColorDead"
+        | "mouseposition"
+        | "setPixelSize"
+        | "setXResolution"
+        | "setScreenRatio";
+    let received_data:
+        | { message: "start"; canvas?: OffscreenCanvas; prerenderCanvas?: OffscreenCanvas }
+        | { message: "setColorAlive" | "setColorDead"; rgba: [number, number, number, number] }
+        | { message: "setXResolution"; width: number }
+        | { message: "setScreenRatio"; screen_ratio: number }
+        | { message: "mouseposition" | "setPixelSize"; [key: string]: any } = event.data;
     switch (received_data.message) {
         case "start":
             if (received_data.canvas == undefined || received_data.prerenderCanvas == undefined) {
-                throw Error("Start is missing arguments")
+                throw Error("Start is missing arguments");
             }
             let mainCanvas: OffscreenCanvas = received_data.canvas;
             let optCanvas: OffscreenCanvas = received_data.prerenderCanvas;
             start_conway_game_on_canvas(mainCanvas, optCanvas);
             break;
         case "setXResolution":
-            console.debug("Worker received resolution message" + received_data)
+            console.debug("Worker received resolution message" + received_data);
             CONWAYCONFIG.x_resolution = received_data.width;
             break;
         case "setScreenRatio":
-            console.debug("Worker received screen ratio message" + received_data.screen_ratio)
+            console.debug("Worker received screen ratio message" + received_data.screen_ratio);
             CONWAYCONFIG.screen_ratio = received_data.screen_ratio;
             break;
         case "setColorAlive":
@@ -35,10 +55,15 @@ self.onmessage = (event) => {
             break;
         case "mouseposition":
             if (CONWAYCONFIG.getMousePositionHandler == null) {
-                CONWAYCONFIG.mousePositionHandler = new MousePositionHandler(received_data.xPos, received_data.yPos);
-            }
-            else {
-                (<MousePositionHandler>CONWAYCONFIG.getMousePositionHandler).updateMousePos(received_data.xPos, received_data.yPos);
+                CONWAYCONFIG.mousePositionHandler = new MousePositionHandler(
+                    received_data.xPos,
+                    received_data.yPos
+                );
+            } else {
+                (<MousePositionHandler>CONWAYCONFIG.getMousePositionHandler).updateMousePos(
+                    received_data.xPos,
+                    received_data.yPos
+                );
             }
             break;
         default:
@@ -46,34 +71,41 @@ self.onmessage = (event) => {
             console.error("Unknown message" + received_data.message);
             break;
     }
-}
+};
 
-
-function bpm() { // TODO add audio spikes for bpm
-    return 100;
-}
-
-function bpm_timeout() {
-    return 20 * (bpm() / 60) * (Math.random());
-}
-
-function get_ratio_y_to_x(x: number, canvas: OffscreenCanvas) { // TODO use offscreen canvas ratio
+function get_ratio_y_to_x(x: number, canvas: OffscreenCanvas) {
+    // TODO use offscreen canvas ratio
     return Math.ceil(x * 0.5625);
 }
-
-
 
 function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: OffscreenCanvas) {
     let fps = 30;
     const x_pixel_default = 150;
     const y_pixel_default = get_ratio_y_to_x(x_pixel_default, canvas);
-    const conwayGameFactory = new ConwayGameFactory(x_pixel_default, y_pixel_default, CENTERDEFAULTGAMERULE, true, MULTIPLICATIONGAMERULE[0], "extend"); // todo real screen proportions, e.g. window is sized
-    let currentConwayGameOriginal: ConwayGame = conwayGameFactory.circle(20, (1 / 20) * Math.PI, [new CellPosition(0, 0)]);
-    let currentConwayGame: ConwayGameAdvancer = ConwayGameAdvancer.fromConwayGame(currentConwayGameOriginal, undefined);
-    const field_drawer: ConwayHTMLDisplayer = new ConwayHTMLDisplayer(canvas, CONWAYCONFIG, null, prerenderCanvas);
+    const conwayGameFactory = new ConwayGameFactory(
+        x_pixel_default,
+        y_pixel_default,
+        CENTERDEFAULTGAMERULE,
+        true,
+        MULTIPLICATIONGAMERULE[0],
+        "extend"
+    ); // todo real screen proportions, e.g. window is sized
+    let currentConwayGameOriginal: ConwayGame = conwayGameFactory.circle(20, (1 / 20) * Math.PI, [
+        new CellPosition(0, 0),
+    ]);
+    let currentConwayGame: ConwayGameAdvancer = ConwayGameAdvancer.fromConwayGame(
+        currentConwayGameOriginal,
+        undefined
+    );
+    const field_drawer: ConwayHTMLDisplayer = new ConwayHTMLDisplayer(
+        canvas,
+        CONWAYCONFIG,
+        null,
+        prerenderCanvas
+    );
     field_drawer.updategameFieldWithShapesFromPreRender(currentConwayGame);
     // field_drawer.displayGeneration(-1);
-    let gameStateUpdateSeconds = 0.2;
+
     let start: number = performance.now();
     let gameStateStart: number = start;
     let timeout_update_received = false;
@@ -87,7 +119,7 @@ function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: O
         const elapsed = timeStamp - start;
         const elapsed_game_state = timeStamp - gameStateStart;
         // field_drawer.displayGeneration(generation); // TODO posting back to dom
-        if (elapsed_game_state > (gameStateUpdateSeconds * 1000)) {
+        if (elapsed_game_state > CONWAYCONFIG.bpm_timeout_seconds * 1000) {
             gameStateStart = timeStamp;
             updateConwayGame();
         }
@@ -108,10 +140,11 @@ function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: O
                 console.debug("mapped path to" + posFixed.startPos + "to " + posFixed.endPos);
                 currentConwayGame.addPath(posFixed);
             }
-            field_drawer.preprender_bitmap(currentConwayGame).then(f => (timeout_update_received = true));
+            field_drawer
+                .preprender_bitmap(currentConwayGame)
+                .then((f) => (timeout_update_received = true));
             generation += 1;
         }
     }
     requestAnimationFrame(draw_conway_game);
 }
-

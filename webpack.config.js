@@ -7,6 +7,7 @@ module.exports = {
   entry: {
     index: path.resolve(__dirname, 'src', 'main', 'index.ts'),
     print: path.resolve(__dirname, 'src', 'main', 'print.ts'),
+    wallpaper_engine: path.resolve(__dirname, 'src', 'main', 'wallpaper_engine.ts'),
     canvas_worker: path.resolve(__dirname, 'src', 'workers', 'canvas_worker.ts'),
   },
   output: {
