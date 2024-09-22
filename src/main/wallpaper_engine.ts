@@ -1,5 +1,3 @@
-// let BPM
-
 class BPMDetector {
     private p_d: PeakDetector;
     private e_values: { is_beat: boolean; point_in_time_ms: number; energy: number }[];
@@ -21,11 +19,6 @@ class BPMDetector {
         audio_data: number[],
         needed_difference: number | undefined = undefined
     ): number {
-        // this.e_values.map((v, _i, _arr) => {
-        //     console.log(
-        //         "beat + val + time:" + v.is_beat + " " + v.energy + " " + v.point_in_time_ms
-        //     );
-        // });
         this.remove_old_entries();
         let large_energy_change: { is_peak: boolean; value: number };
         if (needed_difference === undefined) {
@@ -39,7 +32,7 @@ class BPMDetector {
                 needed_difference
             );
         }
-        console.log("energy data %o", large_energy_change);
+        console.log("energy data %o at time_ms %d", large_energy_change, time_ms);
         this.e_values.push({
             is_beat: large_energy_change.is_peak,
             point_in_time_ms: time_ms,
@@ -101,6 +94,8 @@ class BPMDetector {
 class VolumeNormalizedBPMDetector extends BPMDetector {
     private current_audio_average: number;
     private average_relative_needed_difference: number;
+    private last_bpms: { time_ms: number; bpm: number }[];
+    private beat_change_after_seconds: number;
 
     constructor(
         default_bpm: number,
@@ -110,26 +105,43 @@ class VolumeNormalizedBPMDetector extends BPMDetector {
         super(default_bpm, average_relative_needed_difference, max_bpm);
         this.average_relative_needed_difference = average_relative_needed_difference;
         this.current_audio_average = 0.5;
+        this.last_bpms = [];
+        this.beat_change_after_seconds = 0.15;
     }
 
     public calculate_bpm(time_ms: number, audio_data: number[]): number {
+        // Doesn't work great because of internal rms
         const sum = audio_data.reduce((pre, cur_val, ind, arr) => pre + Math.min(cur_val, 1.0));
-        console.log("sum %f", sum);
+        // console.log("sum %f", sum);
         const average = (sum + this.current_audio_average) / (audio_data.length + 1);
-        const audio_data_normalized: number[] = audio_data.map((val, i, arr) => val / average);
-        this.current_audio_average = average;
-        console.log("Calculated average %f", average);
-        return super.calculate_bpm(
+        const average_with_offset = average + (1 / 10) * this.current_audio_average;
+        // TODO try out different normalization
+        const audio_data_normalized: number[] = audio_data.map(
+            (val, i, arr) => val / average_with_offset
+        );
+        this.current_audio_average = average_with_offset;
+        // console.log("Calculated average %f", average_with_offset);
+        // const needed_difference =
+        //     this.average_relative_needed_difference * this.current_audio_average;
+        const bpm = super.calculate_bpm(
             time_ms,
             audio_data_normalized,
-            this.average_relative_needed_difference * this.current_audio_average
+            this.average_relative_needed_difference
         );
+        if (this.last_bpms.length <= 0) {
+            this.last_bpms.push({ time_ms: time_ms, bpm: bpm });
+            return bpm;
+        }
+        const last_bpm = this.last_bpms[this.last_bpms.length - 1];
+        if ((time_ms - last_bpm.time_ms) / 1000 > this.beat_change_after_seconds) {
+            this.last_bpms.push({ time_ms: time_ms, bpm: bpm });
+        }
+        return last_bpm.bpm;
     }
 }
 
 class PeakDetector {
     last_RMS: number;
-    // current_RMS: number = 0;
 
     constructor(last_RMS: number = 0) {
         this.last_RMS = last_RMS;
@@ -140,6 +152,7 @@ class PeakDetector {
         needed_difference: number = 0.3
     ): { is_peak: boolean; value: number } {
         const current_RMS = this.calculate_RootMeanSquare(arr, this.last_RMS);
+        console.log("current RMS %f", current_RMS);
         const is_new_rms_peak: boolean = current_RMS - needed_difference > this.last_RMS;
         this.last_RMS = current_RMS;
         return { value: current_RMS, is_peak: is_new_rms_peak };
@@ -195,30 +208,41 @@ class AudioArrayTool {
 
     public getFromBassLeftAudioChannel(
         audio_array: number[],
-        channel_count: number | null
+        channel_count: number | null,
+        start_channel: number = 0
     ): number[] {
         if (channel_count == null) {
-            return audio_array.slice(0, this.left_audio_channels);
+            return audio_array.slice(start_channel, this.left_audio_channels);
+        } else {
+            start_channel = Math.min(channel_count, start_channel);
+            channel_count = Math.min(
+                Math.max(channel_count, start_channel),
+                this.left_audio_channels
+            );
         }
-        const audio_data = audio_array.slice(0, Math.min(channel_count, this.left_audio_channels));
+        const audio_data = audio_array.slice(start_channel, channel_count);
         console.log("the audio data %o", audio_data);
         return audio_data;
     }
 }
 
-const bpm_detector = new VolumeNormalizedBPMDetector(80, 0.7);
+const bpm_detector = new VolumeNormalizedBPMDetector(80, 0.15);
 const audio_array_tool = new AudioArrayTool(68, 68);
+let current_audio_data = 1;
 
 function wallpaperAudioListener(audioArray: number[]): void {
-    // console.log("audio data %o", audioArray);
-    // TODO normalize for audio volume
-    console.log(
-        "current bpm" +
-            bpm_detector.calculate_bpm(
-                Date.now(),
-                audio_array_tool.getFromBassLeftAudioChannel(audioArray, 20)
-            )
+    // every 30 data assuming audio resolution of 30 "fps"
+    if (current_audio_data % 6 == 0) {
+    } else {
+        current_audio_data += 1;
+        return;
+    }
+    current_audio_data = 1;
+    const bpm = bpm_detector.calculate_bpm(
+        Date.now(),
+        audio_array_tool.getFromBassLeftAudioChannel(audioArray, 35, 15)
     );
+    console.log("current bpm: %d", bpm);
 }
 
 function add_wallpaper_engine_audio_listening() {
@@ -226,7 +250,7 @@ function add_wallpaper_engine_audio_listening() {
         console.log("adding audio listener");
         const audio_listener = window.wallpaperRegisterAudioListener as (
             callback: (audioArray: number[]) => void
-        ) => void; // TODO fix type
+        ) => void;
         audio_listener(wallpaperAudioListener);
     } else {
         console.log("not in wallpaper engine");
