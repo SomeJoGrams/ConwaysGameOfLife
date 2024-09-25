@@ -1,4 +1,3 @@
-import { config } from "webpack";
 import {
     ConwayGame,
     ConwayGameAdvancer,
