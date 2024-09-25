@@ -8,7 +8,7 @@ Some really nice complex shapes can follow from this simple rules already.
 
 ## How to use
 
-See an example in the linked github page
+See an example in the linked github page [Conways Game of live](https://somejograms.github.io/ConwaysGameOfLife/dist/")
 Open the dist index.html in a browser. Preferably on a self hosted server to avoid issues with cross site requests. Tested in Firefox 130.0.1
 
 ## How to install for development
@@ -36,4 +36,3 @@ Open the dist index.html in a browser. Preferably on a self hosted server to avo
     * test dependencies for building
     * improve bpm recognition in wallpaper engine, e.g. by using multiple peak differences
     * add licensing
-    
