@@ -115,8 +115,8 @@ class ShapedConwayGameRule implements ConwayGameRule {
     }
 
     public applyRuleOnPos(xPos: number, yPos: number, conwayGame: ConwayGame): ConwayGame {
-        const cell: ConwayCell = conwayGame.activeField.getCell(xPos, yPos);
-        let position = conwayGame.activeField.borderFixedRules(new CellPosition(xPos, yPos));
+        const cell: ConwayCell = conwayGame.activeField.get_cell(xPos, yPos);
+        let position = conwayGame.activeField.border_fixed_rules(new CellPosition(xPos, yPos));
         if (!this.ruleCanBeApplied(position)) {
             return conwayGame;
         }
@@ -131,7 +131,7 @@ class ShapedConwayGameRule implements ConwayGameRule {
         const is_dead_neighbour_count = this.dead_goes_to_next_state.some(
             (value) => living_neighbour_count == value
         );
-        let nextCell = conwayGame.inactiveField.getCell(position.xPos, position.yPos);
+        let nextCell = conwayGame.inactiveField.get_cell(position.xPos, position.yPos);
         if (cell.isAlive && is_alive_neighbour_count) {
             nextCell.nextState();
         } else if (!cell.isAlive && is_dead_neighbour_count) {
@@ -148,7 +148,15 @@ class ShapedConwayGameRule implements ConwayGameRule {
     }
 }
 
-class ConwayField {
+interface IConwayField {
+    clear(): void;
+    set_cell(xPos: number, yPos: number, value: ConwayCell): void;
+    get_cell(xPos: number, yPos: number): ConwayCell;
+    border_fixed_rules(pos: CellPosition): CellPosition;
+    cell_living_neighbours(indexX: number, indexY: number, lookingAt: Position[]): number;
+}
+
+class ConwayField implements IConwayField {
     xSize: number;
     ySize: number;
     borderRules: "cutoff" | "extend";
@@ -180,27 +188,27 @@ class ConwayField {
     protected count_living_cells() {
         for (let indexX = 0; indexX < this.xSize; indexX++) {
             for (let indexY = 0; indexY < this.ySize; indexY++) {
-                if (this.getCell(indexX, indexY).isAlive) {
+                if (this.get_cell(indexX, indexY).isAlive) {
                     this._living_cell_count += 1;
                 }
             }
         }
     }
 
-    public getCell(xPos: number, yPos: number): ConwayCell {
-        let cellPos: CellPosition = this.borderFixedRules(new CellPosition(xPos, yPos));
+    public get_cell(xPos: number, yPos: number): ConwayCell {
+        let cellPos: CellPosition = this.border_fixed_rules(new CellPosition(xPos, yPos));
         return this.gameField[cellPos.yPos][cellPos.xPos];
     }
 
-    public setCell(xPos: number, yPos: number, value: ConwayCell) {
-        let cellPos: CellPosition = this.borderFixedRules(new CellPosition(xPos, yPos));
+    public set_cell(xPos: number, yPos: number, value: ConwayCell): void {
+        let cellPos: CellPosition = this.border_fixed_rules(new CellPosition(xPos, yPos));
         if (value.isAlive) {
             this._living_cell_count += 1;
         }
         this.gameField[cellPos.yPos][cellPos.xPos] = value;
     }
 
-    public borderFixedRules(pos: CellPosition): CellPosition {
+    public border_fixed_rules(pos: CellPosition): CellPosition {
         let xPosFixed = pos.xPos;
         let yPosFixed = pos.yPos;
         if (this.borderRules == "cutoff") {
@@ -240,7 +248,7 @@ class ConwayField {
             let y1 = list.yPosition;
             let a = indexX + x1;
             let b = indexY + y1;
-            if (this.in_field(a, b) && this.getCell(a, b).isAlive) {
+            if (this.in_field(a, b) && this.get_cell(a, b).isAlive) {
                 count += 1;
             }
         });
@@ -319,18 +327,18 @@ class ConwayGame {
     }
 
     public setOnActiveField(xPos: number, yPos: number, cell: ConwayCell) {
-        this.activeField.setCell(xPos, yPos, cell);
+        this.activeField.set_cell(xPos, yPos, cell);
     }
 
     public getCurrentCell(xPos: number, yPos: number): ConwayCell {
-        return this.activeField.getCell(xPos, yPos);
+        return this.activeField.get_cell(xPos, yPos);
     }
 
     public nextState(): ConwayGame {
         this.lastStepDiedCells = [];
         for (let indexX = 0; indexX < this.xSize; indexX++) {
             for (let indexY = 0; indexY < this.ySize; indexY++) {
-                this.inactiveField.getCell(indexX, indexY).reset();
+                this.inactiveField.get_cell(indexX, indexY).reset();
                 this.positional_rules.forEach((rule) => {
                     // TODO dry this
                     rule.applyRuleOnPos(indexX, indexY, this);
