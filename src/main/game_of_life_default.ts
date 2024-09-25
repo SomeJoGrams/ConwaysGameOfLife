@@ -78,8 +78,12 @@ class Rectangle extends Shape {
     }
 
     public inBounds(xPos: number, yPos: number): boolean {
-        return xPos > this.lowerLeftCorner.xPos && xPos < this.upperRightCorner.yPos &&
-            yPos > this.lowerLeftCorner.yPos && yPos < this.upperRightCorner.yPos
+        return (
+            xPos > this.lowerLeftCorner.xPos &&
+            xPos < this.upperRightCorner.yPos &&
+            yPos > this.lowerLeftCorner.yPos &&
+            yPos < this.upperRightCorner.yPos
+        );
     }
 }
 
@@ -90,10 +94,14 @@ class ShapedConwayGameRule implements ConwayGameRule {
     last_cell_which_died: CellPosition | null;
     shape: Shape | null;
 
-    constructor(shape: Shape | null, viewed_cells: CellPosition[], alive_goes_to_next_state: number[] = [2, 3],
-        dead_goes_to_next_state: number[] = [3]) {
+    constructor(
+        shape: Shape | null,
+        viewed_cells: CellPosition[],
+        alive_goes_to_next_state: number[] = [2, 3], // FIXME state intialisation
+        dead_goes_to_next_state: number[] = [3]
+    ) {
         this.shape = shape;
-        this.viewed_cell_positions = viewed_cells
+        this.viewed_cell_positions = viewed_cells;
         this.alive_goes_to_next_state = alive_goes_to_next_state;
         this.dead_goes_to_next_state = dead_goes_to_next_state;
         this.last_cell_which_died = null;
@@ -112,17 +120,23 @@ class ShapedConwayGameRule implements ConwayGameRule {
         if (!this.ruleCanBeApplied(position)) {
             return conwayGame;
         }
-        const living_neighbour_count = conwayGame.activeField.cell_living_neighbours(position.xPos, position.yPos, this.viewed_cell_positions);
-        const is_alive_neighbour_count = this.alive_goes_to_next_state.some(value => living_neighbour_count == value);
-        const is_dead_neighbour_count = this.dead_goes_to_next_state.some(value => living_neighbour_count == value);
+        const living_neighbour_count = conwayGame.activeField.cell_living_neighbours(
+            position.xPos,
+            position.yPos,
+            this.viewed_cell_positions
+        );
+        const is_alive_neighbour_count = this.alive_goes_to_next_state.some(
+            (value) => living_neighbour_count == value
+        );
+        const is_dead_neighbour_count = this.dead_goes_to_next_state.some(
+            (value) => living_neighbour_count == value
+        );
         let nextCell = conwayGame.inactiveField.getCell(position.xPos, position.yPos);
         if (cell.isAlive && is_alive_neighbour_count) {
             nextCell.nextState();
-        }
-        else if (!cell.isAlive && is_dead_neighbour_count) {
+        } else if (!cell.isAlive && is_dead_neighbour_count) {
             nextCell.nextState();
-        }
-        else if (cell.isAlive)
+        } else if (cell.isAlive)
             this.last_cell_which_died = new CellPosition(position.xPos, position.yPos);
         return conwayGame;
     }
@@ -132,7 +146,6 @@ class ShapedConwayGameRule implements ConwayGameRule {
         this.last_cell_which_died = null;
         return cell;
     }
-
 }
 
 class ConwayField {
@@ -152,11 +165,16 @@ class ConwayField {
 
     protected create_empty_conways_cell_array(): ConwayCell[][] {
         let arr = new Array(this.ySize).fill(false).map(() => new Array(this.xSize).fill(false));
-        return arr.map((vector, i, arr) => (vector.map((el, i, arr) => new BooleanCell(false))));
+        return arr.map((vector, i, arr) => vector.map((el, i, arr) => new BooleanCell(false)));
+    }
+
+    public clear() {
+        this.gameField = this.create_empty_conways_cell_array();
+        this._living_cell_count = 0;
     }
 
     get living_cell_percent(): number {
-        return this._living_cell_count / this.xSize * this.ySize;
+        return this._living_cell_count / (this.xSize * this.ySize);
     }
 
     protected count_living_cells() {
@@ -176,6 +194,9 @@ class ConwayField {
 
     public setCell(xPos: number, yPos: number, value: ConwayCell) {
         let cellPos: CellPosition = this.borderFixedRules(new CellPosition(xPos, yPos));
+        if (value.isAlive) {
+            this._living_cell_count += 1;
+        }
         this.gameField[cellPos.yPos][cellPos.xPos] = value;
     }
 
@@ -201,13 +222,13 @@ class ConwayField {
             xPosFixed = pos.xPos % this.xSize;
         }
         if (pos.xPos < 0) {
-            xPosFixed = (pos.xPos % this.xSize) * - 1;
+            xPosFixed = (pos.xPos % this.xSize) * -1;
         }
         if (pos.yPos >= this.ySize) {
             yPosFixed = pos.yPos % this.ySize;
         }
         if (pos.yPos < 0) {
-            yPosFixed = (pos.yPos % this.ySize) * - 1;
+            yPosFixed = (pos.yPos % this.ySize) * -1;
         }
         return new CellPosition(xPosFixed, yPosFixed);
     }
@@ -230,11 +251,9 @@ class ConwayField {
         if (this.borderRules == "extend") {
             return true;
         }
-        let inField = ((indexX > 0 && indexY > 0) && (indexX < this.xSize && indexY < this.ySize));
+        let inField = indexX > 0 && indexY > 0 && indexX < this.xSize && indexY < this.ySize;
         return inField;
     }
-
-
 }
 
 class ConwayGame {
@@ -248,21 +267,31 @@ class ConwayGame {
     borderRules: "cutoff" | "extend";
     activeGameFieldKind: "last" | "current";
 
-    constructor(pxSize: number, pySize: number, cells: null | ConwayField, rules: ShapedConwayGameRule[], fallbackRule: ShapedConwayGameRule | null = null, borderRules: "cutoff" | "extend" = "cutoff") {
+    constructor(
+        pxSize: number,
+        pySize: number,
+        cells: null | ConwayField,
+        rules: ShapedConwayGameRule[],
+        fallbackRule: ShapedConwayGameRule | null = null,
+        borderRules: "cutoff" | "extend" = "cutoff"
+    ) {
         this.xSize = pxSize;
         this.ySize = pySize;
         this.borderRules = borderRules;
         if (cells == null) {
             this.currentGameField = this.createGameField();
-        }
-        else {
+        } else {
             this.currentGameField = cells;
         }
         this.lastGameField = this.createGameField();
         this.activeGameFieldKind = "current";
         this.fallbackRule = fallbackRule;
         this.positional_rules = rules;
-        this.lastStepDiedCells = []
+        this.lastStepDiedCells = [];
+    }
+
+    public clear_field() {
+        this.activeField.clear();
     }
 
     protected createGameField() {
@@ -276,8 +305,7 @@ class ConwayGame {
     get activeField(): ConwayField {
         if (this.activeGameFieldKind == "current") {
             return this.currentGameField;
-        }
-        else {
+        } else {
             return this.lastGameField;
         }
     }
@@ -285,8 +313,7 @@ class ConwayGame {
     get inactiveField(): ConwayField {
         if (this.activeGameFieldKind == "current") {
             return this.lastGameField;
-        }
-        else {
+        } else {
             return this.currentGameField;
         }
     }
@@ -304,36 +331,40 @@ class ConwayGame {
         for (let indexX = 0; indexX < this.xSize; indexX++) {
             for (let indexY = 0; indexY < this.ySize; indexY++) {
                 this.inactiveField.getCell(indexX, indexY).reset();
-                this.positional_rules.forEach(rule => { // TODO dry this
+                this.positional_rules.forEach((rule) => {
+                    // TODO dry this
                     rule.applyRuleOnPos(indexX, indexY, this);
                     let optional_cell: CellPosition | null = rule.getIfLastCellKilledAtPosition();
                     if (optional_cell != null) {
-                        this.lastStepDiedCells.push(optional_cell)
+                        this.lastStepDiedCells.push(optional_cell);
                     }
                 });
                 if (this.fallbackRuleShouldBeApplied(indexX, indexY)) {
                     (<ShapedConwayGameRule>this.fallbackRule).applyRuleOnPos(indexX, indexY, this);
-                    let optional_cell: CellPosition | null = (<ShapedConwayGameRule>this.fallbackRule).getIfLastCellKilledAtPosition();
+                    let optional_cell: CellPosition | null = (<ShapedConwayGameRule>(
+                        this.fallbackRule
+                    )).getIfLastCellKilledAtPosition();
                     if (optional_cell != null) {
-                        this.lastStepDiedCells.push(optional_cell)
+                        this.lastStepDiedCells.push(optional_cell);
                     }
                 }
             }
         }
-        this.switchActiveGameField()
+        this.switchActiveGameField();
         return this;
     }
 
     protected fallbackRuleShouldBeApplied(indexX: number, indexY: number) {
-        const positionalRulesApplicable = this.positional_rules.some((rule, i, arr) => rule.ruleCanBeApplied(new CellPosition(indexX, indexY)));
+        const positionalRulesApplicable = this.positional_rules.some((rule, i, arr) =>
+            rule.ruleCanBeApplied(new CellPosition(indexX, indexY))
+        );
         return !positionalRulesApplicable && this.fallbackRule != null;
     }
 
     protected switchActiveGameField() {
         if (this.activeGameFieldKind == "last") {
             this.activeGameFieldKind = "current";
-        }
-        else {
+        } else {
             this.activeGameFieldKind = "last";
         }
     }
@@ -341,42 +372,74 @@ class ConwayGame {
     public getLastStepDiedCellPositions(): CellPosition[] {
         return this.lastStepDiedCells;
     }
-
 }
 
 interface GeneralGameRules {
     nextGameWithRule(conwayGame: ConwayGame): void;
 }
 
+class ResetGameRule implements GeneralGameRules {
+    private readonly reset_percent: number;
+    private readonly editing_conway_factory: ConwayGameFactory;
+
+    constructor(reset_percent: number, replacing_factory: ConwayGameFactory) {
+        this.reset_percent = reset_percent;
+        this.editing_conway_factory = replacing_factory;
+    }
+
+    public nextGameWithRule(conwayGame: ConwayGame): void {
+        if (conwayGame.activeField.living_cell_percent > this.reset_percent) {
+            this.editing_conway_factory.circle(5, 1, undefined, conwayGame); // TODO make creation function take an object
+        }
+    }
+}
+
 class ConwayGameAdvancer extends ConwayGame {
     generalRules: GeneralGameRules[];
 
-    constructor(pxSize: number, pySize: number, cells: null | ConwayField, rules: ShapedConwayGameRule[], fallbackRule: ShapedConwayGameRule | null = null, borderRules: "cutoff" | "extend" = "cutoff", generalRules: GeneralGameRules[]) {
+    constructor(
+        pxSize: number,
+        pySize: number,
+        cells: null | ConwayField,
+        rules: ShapedConwayGameRule[],
+        fallbackRule: ShapedConwayGameRule | null = null,
+        borderRules: "cutoff" | "extend" = "cutoff",
+        generalRules: GeneralGameRules[]
+    ) {
         super(pxSize, pySize, cells, rules, fallbackRule, borderRules);
         this.generalRules = generalRules;
     }
 
     static fromConwayGame(conwayGame: ConwayGame, generalRules: GeneralGameRules[] | null = null) {
         let generalR = generalRules ?? [];
-        return new this(conwayGame.xSize, conwayGame.ySize, conwayGame.activeField, conwayGame.positional_rules, conwayGame.fallbackRule, conwayGame.borderRules, generalR);
+        return new this(
+            conwayGame.xSize,
+            conwayGame.ySize,
+            conwayGame.activeField,
+            conwayGame.positional_rules,
+            conwayGame.fallbackRule,
+            conwayGame.borderRules,
+            generalR
+        );
     }
 
     public nextState(): ConwayGame {
         for (const rule of this.generalRules) {
+            console.log("using general rule");
             rule.nextGameWithRule(this);
         }
         super.nextState(); // Problem how to optimize memory within this hmmm
         return this;
     }
 
-    public addPath(pos: { startPos: CellPosition, endPos: CellPosition }): void {
+    public addPath(pos: { startPos: CellPosition; endPos: CellPosition }): void {
         let path: CellPosition[] = this.calcPath(pos);
         for (const position of path) {
             this.getCurrentCell(position.xPos, position.yPos).nextState();
         }
     }
 
-    public calcPath(pos: { startPos: CellPosition, endPos: CellPosition }): CellPosition[] {
+    public calcPath(pos: { startPos: CellPosition; endPos: CellPosition }): CellPosition[] {
         let resultPath: Set<CellPosition> = new Set();
         const xStart: number = Math.round(pos.startPos.xPos);
         const yStart: number = Math.round(pos.startPos.yPos);
@@ -391,32 +454,31 @@ class ConwayGameAdvancer extends ConwayGame {
             for (let curyDif = 0; curyDif <= Math.abs(yDif); curyDif++) {
                 resultPath.add(new CellPosition(Math.round(xStart), Math.round(yStart + curyDif)));
             }
-        }
-        else if (yDif == 0) {
+        } else if (yDif == 0) {
             for (let curxDif = 0; curxDif <= Math.abs(xDif); curxDif++) {
                 resultPath.add(new CellPosition(Math.round(xStart + curxDif), Math.round(yStart)));
             }
-        }
-        else {
-            const pointDistance = Math.sqrt(Math.pow(xDif, 2) + Math.pow(yDif, 2))
+        } else {
+            const pointDistance = Math.sqrt(Math.pow(xDif, 2) + Math.pow(yDif, 2));
             let m = yDif / xDif;
             let xPos: number = 0;
             if (m > 0) {
                 xPos = Math.min(xStart, xEnd);
-            }
-            else {
+            } else {
                 xPos = Math.max(xStart, xEnd);
             }
             let b: number = yEnd - m * xEnd;
-            for (let curDist = 0; curDist < (pointDistance / Math.abs(m)) - Math.abs(m); curDist += 1) {
+            for (
+                let curDist = 0;
+                curDist < pointDistance / Math.abs(m) - Math.abs(m);
+                curDist += 1
+            ) {
                 resultPath.add(new CellPosition(Math.round(xPos), Math.round(m * xPos + b)));
                 xPos += m;
             }
         }
         return Array.of(...resultPath.keys());
     }
-
-
 }
 
 class ConwayGameFactory {
@@ -427,7 +489,14 @@ class ConwayGameFactory {
     borderRules: "cutoff" | "extend";
     aliveCellState: boolean;
 
-    constructor(xSize: number, ySize: number, rules: ShapedConwayGameRule[], aliveCellState: boolean, fallbackRule: ShapedConwayGameRule | null = null, borderRules: "cutoff" | "extend" = "cutoff") {
+    constructor(
+        xSize: number,
+        ySize: number,
+        rules: ShapedConwayGameRule[],
+        aliveCellState: boolean,
+        fallbackRule: ShapedConwayGameRule | null = null,
+        borderRules: "cutoff" | "extend" = "cutoff"
+    ) {
         this.xSize = xSize;
         this.ySize = ySize;
         this.rules = rules;
@@ -436,43 +505,95 @@ class ConwayGameFactory {
         this.fallbackRule = fallbackRule;
     }
 
-    public centeredfPentomino(): ConwayGame | null {
+    public centeredfPentomino(conway_game: ConwayGame | undefined): ConwayGame | null {
         if (this.xSize < 3 && this.ySize < 3) {
             console.error("Cannot create a Pentomino in a field smaller than 3 times 3");
             return null;
         }
         let pos = this.get_center();
-        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.fallbackRule, this.borderRules);
+        if (conway_game == undefined) {
+            conway_game = this.create_conway_game();
+        } else {
+            conway_game.clear_field();
+        }
         conway_game.setOnActiveField(pos.xPos, pos.yPos, new BooleanCell(this.aliveCellState));
         conway_game.setOnActiveField(pos.xPos, pos.yPos + 1, new BooleanCell(this.aliveCellState));
         conway_game.setOnActiveField(pos.xPos, pos.yPos - 1, new BooleanCell(this.aliveCellState));
         conway_game.setOnActiveField(pos.xPos - 1, pos.yPos, new BooleanCell(this.aliveCellState));
-        conway_game.setOnActiveField(pos.xPos + 1, pos.yPos + 1, new BooleanCell(this.aliveCellState));
+        conway_game.setOnActiveField(
+            pos.xPos + 1,
+            pos.yPos + 1,
+            new BooleanCell(this.aliveCellState)
+        );
         return conway_game;
     }
 
-    public circle(radius: number, steps: number = 1 / (2 * Math.PI), offsets: CellPosition[] | undefined = undefined): ConwayGame { // TODO fix type + use
+    protected create_conway_game(): ConwayGame {
+        let conway_game: ConwayGame = new ConwayGame(
+            this.xSize,
+            this.ySize,
+            null,
+            this.rules,
+            this.fallbackRule,
+            this.borderRules
+        );
+        return conway_game;
+    }
+
+    public circle(
+        radius: number,
+        steps: number = 1 / (2 * Math.PI),
+        offsets: CellPosition[] | undefined = undefined,
+        conway_game: ConwayGame | undefined = undefined
+    ): ConwayGame {
+        // TODO fix type + use
         let pos = this.get_center();
         offsets = offsets ?? [new CellPosition(0, 0)];
-        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.fallbackRule, this.borderRules);
-        for (const offset of offsets) { // TODO calc overlap of shaped
+        if (conway_game == undefined) {
+            conway_game = this.create_conway_game();
+        } else {
+            conway_game.clear_field();
+        }
+        for (const offset of offsets) {
+            // TODO calc overlap of shaped
             for (let radiusInc = 0; radiusInc < radius; radiusInc++) {
                 let posToRotate = new CellPosition(0, radiusInc);
                 for (let angle = 0; angle < 2 * Math.PI; angle += steps) {
-                    let newXPos = pos.xPos - (Math.round(posToRotate.xPos * Math.cos(angle) + posToRotate.yPos * -1 * Math.sin(angle)));
-                    let newYPos = pos.yPos + (Math.round(posToRotate.xPos * Math.sin(angle) + posToRotate.yPos * Math.cos(angle))); // TODO move pos calculation out
-                    conway_game.setOnActiveField(newXPos + offset.xPos, newYPos + offset.yPos, new BooleanCell(this.aliveCellState));
+                    let newXPos =
+                        pos.xPos -
+                        Math.round(
+                            posToRotate.xPos * Math.cos(angle) +
+                                posToRotate.yPos * -1 * Math.sin(angle)
+                        );
+                    let newYPos =
+                        pos.yPos +
+                        Math.round(
+                            posToRotate.xPos * Math.sin(angle) + posToRotate.yPos * Math.cos(angle)
+                        ); // TODO move pos calculation out
+                    conway_game.setOnActiveField(
+                        newXPos + offset.xPos,
+                        newYPos + offset.yPos,
+                        new BooleanCell(this.aliveCellState)
+                    );
                 }
             }
         }
         return conway_game;
     }
 
-    public yline(length: number) {
+    public yline(length: number, conway_game: ConwayGame | undefined = undefined) {
         let center = this.get_center();
-        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.fallbackRule, "cutoff");
+        if (conway_game == undefined) {
+            conway_game = this.create_conway_game();
+        } else {
+            conway_game.clear_field();
+        }
         for (let curLength = 0; curLength < length; curLength++) {
-            conway_game.setOnActiveField(center.xPos, center.yPos + curLength, new BooleanCell(this.aliveCellState)); // TODO create y Positions
+            conway_game.setOnActiveField(
+                center.xPos,
+                center.yPos + curLength,
+                new BooleanCell(this.aliveCellState)
+            );
         }
         return conway_game;
     }
@@ -483,19 +604,30 @@ class ConwayGameFactory {
         return new CellPosition(middleX, middleY);
     }
 
-    public randomize_cells(alive_above: number = 3, scale_rand: number = 10): ConwayGame {
-        let conway_game: ConwayGame = new ConwayGame(this.xSize, this.ySize, null, this.rules, this.fallbackRule, "cutoff");
+    public randomize_cells(
+        alive_above: number = 3,
+        scale_rand: number = 10,
+        conway_game: ConwayGame | undefined = undefined
+    ): ConwayGame {
+        if (conway_game == undefined) {
+            conway_game = this.create_conway_game();
+        } else {
+            conway_game.clear_field();
+        }
         for (let indexX = 0; indexX < this.xSize; indexX++) {
             for (let indexY = 0; indexY < this.ySize; indexY++) {
                 let rand_val = Math.round(Math.random() * scale_rand);
                 if (rand_val >= alive_above) {
-                    conway_game.setOnActiveField(indexX, indexY, new BooleanCell(this.aliveCellState));
+                    conway_game.setOnActiveField(
+                        indexX,
+                        indexY,
+                        new BooleanCell(this.aliveCellState)
+                    );
                 }
             }
         }
         return conway_game;
     }
-
 }
 
 interface CellRepr {
@@ -531,7 +663,7 @@ class CellColor implements CellRepr {
     }
 
     get rgba_str(): string {
-        return "rgba(" + this.r + "," + this.g + "," + this.b + "," + this.a + ")"
+        return "rgba(" + this.r + "," + this.g + "," + this.b + "," + this.a + ")";
     }
 
     public clone(): CellColor {
@@ -544,7 +676,7 @@ class FadingCellColor extends CellColor {
     color_fade_factor: number;
 
     constructor(start_repr: CellRepr, fade_strength = 0.8) {
-        const data = start_repr.data
+        const data = start_repr.data;
         super(data[0], data[1], data[2], data[3]);
         this.start_repr = start_repr;
         this.color_fade_factor = fade_strength;
@@ -555,7 +687,6 @@ class FadingCellColor extends CellColor {
         this.g = this.g * this.color_fade_factor * times;
         this.b = this.b * this.color_fade_factor * times;
     }
-
 }
 
 class ConwayGameRepresenter {
@@ -581,23 +712,25 @@ class ConwayGameRepresenter {
     }
 
     public str_field() {
-        let result_str = ""
+        let result_str = "";
         for (let indexX = 0; indexX < this.conway_game.xSize; indexX++) {
             for (let indexY = 0; indexY < this.conway_game.ySize; indexY++) {
                 let cell: ConwayCell = this.conway_game.getCurrentCell(indexX, indexY);
                 result_str += this.representation(cell);
             }
-            result_str += "\n"
+            result_str += "\n";
         }
-        return result_str
+        return result_str;
     }
 
     public as_number_colors_arr(): CellRepr[] {
-        let result: CellRepr[] = new Array((this.conway_game.xSize) * (this.conway_game.ySize)).fill(this.cell_repr_transparent);
+        let result: CellRepr[] = new Array(this.conway_game.xSize * this.conway_game.ySize).fill(
+            this.cell_repr_transparent
+        );
         for (let indexX = 0; indexX < this.conway_game.xSize; indexX++) {
             for (let indexY = 0; indexY < this.conway_game.ySize; indexY++) {
                 const cell: ConwayCell = this.conway_game.getCurrentCell(indexX, indexY);
-                let one_dim_ind = indexX + indexY * (this.conway_game.xSize);
+                let one_dim_ind = indexX + indexY * this.conway_game.xSize;
                 result[one_dim_ind] = cell.isAlive ? this.cell_repr_alive : this.cell_repr_dead;
             }
         }
@@ -606,9 +739,8 @@ class ConwayGameRepresenter {
 
     public number_color_arr(indexX: number, indexY: number): CellRepr {
         const cell: ConwayCell = this.conway_game.getCurrentCell(indexX, indexY);
-        return cell.isAlive ? this.cell_repr_alive : this.cell_repr_dead
+        return cell.isAlive ? this.cell_repr_alive : this.cell_repr_dead;
     }
-
 }
 
 class AgingCellRepr {
@@ -642,7 +774,6 @@ class AgingCellRepr {
     }
 }
 
-
 class ConwayHTMLDisplayer {
     canvas: HTMLCanvasElement | OffscreenCanvas | undefined;
     config: ConfigState;
@@ -652,14 +783,22 @@ class ConwayHTMLDisplayer {
     preRenderContext: OffscreenCanvasRenderingContext2D | undefined;
     bitmapContext: ImageBitmapRenderingContext | undefined;
 
-    constructor(canvas: HTMLCanvasElement | OffscreenCanvas | undefined, config: ConfigState, nextCanvasBitMap = null, preRenderCanvas: OffscreenCanvas | null = null, bitmapContext: ImageBitmapRenderingContext | null = null) {
+    constructor(
+        canvas: HTMLCanvasElement | OffscreenCanvas | undefined,
+        config: ConfigState,
+        nextCanvasBitMap = null,
+        preRenderCanvas: OffscreenCanvas | null = null,
+        bitmapContext: ImageBitmapRenderingContext | null = null
+    ) {
         this.nextCanvasBitMap = null;
         this.preRenderCanvas = null;
         this.canvas = <OffscreenCanvas>canvas;
         this.config = config;
         this.posToCellWithVisualTrail = new Map();
         if (canvas != undefined && preRenderCanvas != null) {
-            this.bitmapContext = <ImageBitmapRenderingContext>(<OffscreenCanvas>this.canvas).getContext("bitmaprenderer");
+            this.bitmapContext = <ImageBitmapRenderingContext>(
+                (<OffscreenCanvas>this.canvas).getContext("bitmaprenderer")
+            );
             this.nextCanvasBitMap = nextCanvasBitMap;
             this.preRenderCanvas = preRenderCanvas;
             let context = this.preRenderCanvas.getContext("2d", { alpha: false });
@@ -677,10 +816,13 @@ class ConwayHTMLDisplayer {
         }
         const new_cell_trail_positions = conway_game.getLastStepDiedCellPositions();
         new_cell_trail_positions.forEach((pos, i, arr) => {
-            this.posToCellWithVisualTrail.set(pos.toString(), new AgingCellRepr(pos, this.config.trail_length, this.config.alive_cell_repr))
+            this.posToCellWithVisualTrail.set(
+                pos.toString(),
+                new AgingCellRepr(pos, this.config.trail_length, this.config.alive_cell_repr)
+            );
         });
         for (const [posString, val] of this.posToCellWithVisualTrail.entries()) {
-            val.age()
+            val.age();
             let agingRepr: AgingCellRepr | undefined = this.posToCellWithVisualTrail.get(posString);
             if (agingRepr != undefined && agingRepr?.current_life <= 0) {
                 this.posToCellWithVisualTrail.delete(posString);
@@ -688,11 +830,13 @@ class ConwayHTMLDisplayer {
         }
     }
 
-
     public updateEmojiGameFieldAsString(conwayGame: ConwayGame) {
         let gameSpace = document.getElementById("gameField");
         if (gameSpace != null) {
-            let representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
+            let representer: ConwayGameRepresenter = new ConwayGameRepresenter(
+                conwayGame,
+                this.config
+            );
             gameSpace.innerHTML = representer.str_field();
         }
     }
@@ -701,21 +845,32 @@ class ConwayHTMLDisplayer {
         if (!this.canvas) {
             throw Error("no canvas defined");
         }
-        const representer: ConwayGameRepresenter = new ConwayGameRepresenter(conwayGame, this.config);
+        const representer: ConwayGameRepresenter = new ConwayGameRepresenter(
+            conwayGame,
+            this.config
+        );
         const xSizeRect = this.canvas.width / conwayGame.xSize;
         const ySizeRect = this.canvas.height / conwayGame.ySize;
         let cur_res_index = 0;
         let alivePath: [number, number, number, number][] = [];
-        let fadingPaths: Map<number, { cell_repr: CellRepr, fadingPath: [number, number, number, number][] }> = new Map();
+        let fadingPaths: Map<
+            number,
+            { cell_repr: CellRepr; fadingPath: [number, number, number, number][] }
+        > = new Map();
         for (let xPos = 0; xPos < conwayGame.xSize; xPos++) {
             for (let yPos = 0; yPos < conwayGame.ySize; yPos++) {
                 if (conwayGame.getCurrentCell(xPos, yPos).isAlive) {
                     alivePath.push([xPos * xSizeRect, yPos * ySizeRect, xSizeRect, ySizeRect]);
                 }
-                const fadingCell: AgingCellRepr | undefined = this.posToCellWithVisualTrail.get(new CellPosition(xPos, yPos).toString());
+                const fadingCell: AgingCellRepr | undefined = this.posToCellWithVisualTrail.get(
+                    new CellPosition(xPos, yPos).toString()
+                );
                 if (fadingCell != undefined) {
                     if (!fadingPaths.has(fadingCell.current_life)) {
-                        fadingPaths.set(fadingCell.current_life, { cell_repr: fadingCell.fading_cell_color, fadingPath: [] });
+                        fadingPaths.set(fadingCell.current_life, {
+                            cell_repr: fadingCell.fading_cell_color,
+                            fadingPath: [],
+                        });
                     }
                     let fadingPath = fadingPaths.get(fadingCell.current_life)?.fadingPath;
                     fadingPath?.push([xPos * xSizeRect, yPos * ySizeRect, xSizeRect, ySizeRect]);
@@ -734,18 +889,22 @@ class ConwayHTMLDisplayer {
         }
         this.renderPath(this.preRenderContext, representer.cell_repr_alive, alivePath);
         if (this.preRenderCanvas) {
-            this.nextCanvasBitMap = this.preRenderCanvas.transferToImageBitmap()
+            this.nextCanvasBitMap = this.preRenderCanvas.transferToImageBitmap();
         }
     }
 
-    protected renderPath(canvasContext: OffscreenCanvasRenderingContext2D, cell_repr: CellRepr, rectPath: [number, number, number, number][]) {
-        canvasContext?.beginPath()
+    protected renderPath(
+        canvasContext: OffscreenCanvasRenderingContext2D,
+        cell_repr: CellRepr,
+        rectPath: [number, number, number, number][]
+    ) {
+        canvasContext?.beginPath();
         canvasContext.fillStyle = cell_repr.rgba_str;
         for (const path of rectPath) {
             canvasContext.rect(path[0], path[1], path[2], path[3]);
         }
-        canvasContext?.closePath()
-        canvasContext?.fill()
+        canvasContext?.closePath();
+        canvasContext?.fill();
     }
 
     public async getPreRenderedBitmap(conwayGame: ConwayGame): Promise<ImageBitmap> {
@@ -755,10 +914,14 @@ class ConwayHTMLDisplayer {
         return <ImageBitmap>this.nextCanvasBitMap;
     }
 
-    public updategameFieldWithShapesFromPreRender(conwayGame: ConwayGame, offsetX: number = 0, offsetY: number = 0) {
+    public updategameFieldWithShapesFromPreRender(
+        conwayGame: ConwayGame,
+        offsetX: number = 0,
+        offsetY: number = 0
+    ) {
         this.addVisualTrailCellsAndAgeTrail(conwayGame);
         if (!this.canvas) {
-            console.error("Canvas is undefined and therefore not usable")
+            console.error("Canvas is undefined and therefore not usable");
             return;
         }
 
@@ -781,13 +944,12 @@ class ConwayHTMLDisplayer {
     //     return cell_repr;
     // }
 
-
     public displayGeneration(generation: number) {
         let currentGenerationElement = document.getElementById("GameFieldCurrentGeneration");
         if (currentGenerationElement != null) {
             let new_element = document.createElement("h1");
             new_element.innerHTML = "current Generation: " + generation.toString();
-            currentGenerationElement.childNodes.forEach(element => {
+            currentGenerationElement.childNodes.forEach((element) => {
                 element.remove();
             });
             currentGenerationElement.appendChild(new_element);
@@ -795,7 +957,7 @@ class ConwayHTMLDisplayer {
     }
 
     public consumeUpdates() {
-        this.config.onScreenChange().on(this.handleConfigUpdate.bind(this));
+        this.config.on_screen_change().on(this.handleConfigUpdate.bind(this));
     }
 
     public handleConfigUpdate() {
@@ -807,27 +969,33 @@ class ConwayHTMLDisplayer {
                 this.preRenderCanvas.width = this.canvas.width;
                 this.preRenderCanvas.height = this.canvas.height;
             }
-        }    
-    }
-
-    public mapToConwayFieldPosition(pos: { startPos: CellPosition, endPos: CellPosition }, conway_game: ConwayGame) {
-        const startPosX = (pos.startPos.xPos / this.config.x_resolution) * conway_game.xSize;
-        const startPosY = (pos.startPos.yPos / (this.config.x_resolution * this.config.screen_ratio)) * conway_game.ySize
-        const endPosX = (pos.endPos.xPos / this.config.x_resolution) * conway_game.xSize;
-        const endPosY = (pos.endPos.yPos / (this.config.x_resolution * this.config.screen_ratio)) * conway_game.ySize;
-        return {
-            startPos: new CellPosition( Math.round(startPosX), Math.round(startPosY)),
-            endPos: new CellPosition(Math.round(endPosX), Math.round(endPosY))
         }
     }
 
+    public mapToConwayFieldPosition(
+        pos: { startPos: CellPosition; endPos: CellPosition },
+        conway_game: ConwayGame
+    ) {
+        const startPosX = (pos.startPos.xPos / this.config.x_resolution) * conway_game.xSize;
+        const startPosY =
+            (pos.startPos.yPos / (this.config.x_resolution * this.config.screen_ratio)) *
+            conway_game.ySize;
+        const endPosX = (pos.endPos.xPos / this.config.x_resolution) * conway_game.xSize;
+        const endPosY =
+            (pos.endPos.yPos / (this.config.x_resolution * this.config.screen_ratio)) *
+            conway_game.ySize;
+        return {
+            startPos: new CellPosition(Math.round(startPosX), Math.round(startPosY)),
+            endPos: new CellPosition(Math.round(endPosX), Math.round(endPosY)),
+        };
+    }
 }
 
 class MousePositionHandler {
     lastXPosition: number;
     lastYPosition: number;
     timeStamp: number;
-    path: { startPos: CellPosition, endPos: CellPosition } | null;
+    path: { startPos: CellPosition; endPos: CellPosition } | null;
     constructor(startXPos: number, startYPos: number) {
         this.lastXPosition = startXPos;
         this.lastYPosition = startYPos;
@@ -836,21 +1004,24 @@ class MousePositionHandler {
     }
 
     public updateMousePos(xPos: number, yPos: number): void {
-        if ((xPos != this.lastXPosition) || (yPos != this.lastYPosition)) {
-            const path = { startPos: new CellPosition(this.lastXPosition, this.lastYPosition), endPos: new CellPosition(xPos, yPos) };
+        if (xPos != this.lastXPosition || yPos != this.lastYPosition) {
+            const path = {
+                startPos: new CellPosition(this.lastXPosition, this.lastYPosition),
+                endPos: new CellPosition(xPos, yPos),
+            };
             this.path = path;
             this.lastXPosition = xPos;
             this.lastYPosition = yPos;
         }
     }
 
-    public getAndResetPath(): { startPos: Position, endPos: Position } | null {
+    public getAndResetPath(): { startPos: Position; endPos: Position } | null {
         let p = null;
         if (this.path?.startPos != null && this.path?.endPos != null) {
             // TODO add clone function to cell position
             p = {
                 startPos: new CellPosition(this.path?.startPos.xPos, this.path?.startPos.yPos),
-                endPos: new CellPosition(this.path?.endPos.xPos, this.path?.endPos.yPos)
+                endPos: new CellPosition(this.path?.endPos.xPos, this.path?.endPos.yPos),
             };
         }
         this.path = null;
@@ -864,25 +1035,24 @@ interface ISimpleEvent<T> {
 }
 
 class SimpleEvent<T> implements ISimpleEvent<T> {
-    private handlers: { (data?: T): void; }[] = []; // just functions which are called on trigger
+    private handlers: { (data?: T): void }[] = []; // just functions which are called on trigger
 
     public on(handler: { (data?: T): void }): void {
         this.handlers.push(handler);
     }
 
     public off(handler: { (data?: T): void }): void {
-        this.handlers = this.handlers.filter(h => h !== handler);
+        this.handlers = this.handlers.filter((h) => h !== handler);
     }
 
     public trigger(data?: T) {
-        this.handlers.slice(0).forEach(h => h(data));
+        this.handlers.slice(0).forEach((h) => h(data));
     }
 
     public expose(): ISimpleEvent<T> {
         return this;
     }
 }
-
 
 class ConfigState {
     private _alive_cell_color: CellRepr;
@@ -891,28 +1061,31 @@ class ConfigState {
     private _mousePositionHandler: MousePositionHandler | null;
     private _screen_ratio: number;
     private _x_resolution: number;
-    private currentBPM: number = 60;
+    private current_BPM: number = 60;
+    private _beat_offset_time_ms: number | null;
     game_settings_updated: boolean; // TODO equality check on attributes
 
     private readonly screen_change_event: SimpleEvent<void> = new SimpleEvent<void>();
 
-    public onScreenChange(): ISimpleEvent<void>{
-        return this.screen_change_event.expose()
+    public on_screen_change(): ISimpleEvent<void> {
+        return this.screen_change_event.expose();
     }
 
-    get bpm() { // TODO add audio spikes for bpm
-        return this.currentBPM;
-    }
-
-    public constructor(color_alive: CellColor = new CellColor(255, 255, 255, 255), color_dead: CellColor = new CellColor(0, 0, 20, 255), display_trails = 3,
-                        x_resolution = 1000, screen_ratio = 9/16) {
+    public constructor(
+        color_alive: CellColor = new CellColor(255, 255, 255, 255),
+        color_dead: CellColor = new CellColor(0, 0, 20, 255),
+        display_trails = 3,
+        x_resolution = 1000,
+        screen_ratio = 9 / 16
+    ) {
         this._alive_cell_color = color_alive;
         this._dead_cell_color = color_dead;
         this._display_trails = Math.max(1, display_trails);
         this._x_resolution = x_resolution;
-        this._screen_ratio = screen_ratio
+        this._screen_ratio = screen_ratio;
         this._mousePositionHandler = null;
         this.game_settings_updated = false;
+        this._beat_offset_time_ms = 0;
     }
 
     get alive_cell_repr(): CellRepr {
@@ -944,7 +1117,7 @@ class ConfigState {
     }
 
     get screen_ratio(): number {
-        return this._screen_ratio
+        return this._screen_ratio;
     }
 
     get dead_cell_repr(): CellRepr {
@@ -967,19 +1140,77 @@ class ConfigState {
         return 1 / (this.bpm / 60);
     }
 
+    set update_bpm(new_bpm: number) {
+        this.current_BPM = new_bpm;
+    }
+
+    get bpm() {
+        return this.current_BPM;
+    }
+
+    public get_beat_offset_seconds(time_ms: number) {
+        if (this.beat_offset_seconds === null) {
+            return 0;
+        }
+        const offset = time_ms - this.beat_offset_seconds;
+        return Math.max(0, offset);
+    }
+
+    set beat_offset_seconds(time_ms: number | null) {
+        this._beat_offset_time_ms = time_ms;
+    }
 }
 
-const SURROUNDINGPOSITIONS = new Array(new CellPosition(-1, -1), new CellPosition(-1, 0), new CellPosition(-1, 1), new CellPosition(0, 1), new CellPosition(0, -1), new CellPosition(1, 1), new CellPosition(1, 0), new CellPosition(1, -1));
-const DEFAULTGAMERULE = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2, 3], [3]));
-const MULTIPLICATIONGAMERULE = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2], [2]));
-const COPYGAMERULES = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [1, 3, 5, 7], [1, 3, 5, 7]));
+const SURROUNDINGPOSITIONS = new Array(
+    new CellPosition(-1, -1),
+    new CellPosition(-1, 0),
+    new CellPosition(-1, 1),
+    new CellPosition(0, 1),
+    new CellPosition(0, -1),
+    new CellPosition(1, 1),
+    new CellPosition(1, 0),
+    new CellPosition(1, -1)
+);
+const DEFAULTGAMERULE = new Array(
+    new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2, 3], [3])
+);
+const MULTIPLICATIONGAMERULE = new Array(
+    new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2], [2])
+);
+const COPYGAMERULES = new Array(
+    new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [1, 3, 5, 7], [1, 3, 5, 7])
+);
 const WORLD33RULES = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [3], [3]));
-const WORLD236RULES = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2, 3, 6], [3]));
+const WORLD236RULES = new Array(
+    new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2, 3, 6], [3])
+);
 const SNAKEKINGRULEIDEA = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [2], [2]));
 const WORLD44RULES = new Array(new ShapedConwayGameRule(null, SURROUNDINGPOSITIONS, [3], [2]));
-const CENTERDEFAULTGAMERULE = new Array(new ShapedConwayGameRule(new Rectangle(new CellPosition(100, 0), new CellPosition(200, 200)), SURROUNDINGPOSITIONS, [2, 3], [3]))
+const CENTERDEFAULTGAMERULE = new Array(
+    new ShapedConwayGameRule(
+        new Rectangle(new CellPosition(100, 0), new CellPosition(200, 200)),
+        SURROUNDINGPOSITIONS,
+        [2, 3],
+        [3]
+    )
+);
 
 export {
-    ConwayCell, ConwayGame, ConwayGameFactory, CENTERDEFAULTGAMERULE, DEFAULTGAMERULE, ConwayHTMLDisplayer, ConwayGameRepresenter, CellColor, ConfigState as ConfigStorage, CellPosition, AgingCellRepr, MULTIPLICATIONGAMERULE, BooleanCell,
-    ConwayGameAdvancer, MousePositionHandler
+    ConwayCell,
+    ConwayGame,
+    ConwayGameFactory,
+    CENTERDEFAULTGAMERULE,
+    DEFAULTGAMERULE,
+    ConwayHTMLDisplayer,
+    ConwayGameRepresenter,
+    CellColor,
+    ConfigState as ConfigStorage,
+    CellPosition,
+    AgingCellRepr,
+    MULTIPLICATIONGAMERULE,
+    BooleanCell,
+    ConwayGameAdvancer,
+    MousePositionHandler,
+    ResetGameRule,
+    ShapedConwayGameRule,
 };

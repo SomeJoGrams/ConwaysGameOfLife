@@ -16,20 +16,13 @@ import {
 let CONWAYCONFIG = new ConfigStorage();
 self.onmessage = (event) => {
     console.debug("Worker received message " + event.data);
-    type receivableMessages =
-        | "start"
-        | "setColorAlive"
-        | "setColorDead"
-        | "mouseposition"
-        | "setPixelSize"
-        | "setXResolution"
-        | "setScreenRatio";
     let received_data:
         | { message: "start"; canvas?: OffscreenCanvas; prerenderCanvas?: OffscreenCanvas }
         | { message: "setColorAlive" | "setColorDead"; rgba: [number, number, number, number] }
         | { message: "setXResolution"; width: number }
         | { message: "setScreenRatio"; screen_ratio: number }
-        | { message: "mouseposition" | "setPixelSize"; [key: string]: any } = event.data;
+        | { message: "mouseposition" | "setPixelSize"; [key: string]: any }
+        | { message: "bpmUpdate"; bpm: number; next_beat_time: number } = event.data;
     switch (received_data.message) {
         case "start":
             if (received_data.canvas == undefined || received_data.prerenderCanvas == undefined) {
@@ -66,9 +59,13 @@ self.onmessage = (event) => {
                 );
             }
             break;
+        case "bpmUpdate":
+            CONWAYCONFIG.update_bpm = received_data.bpm;
+            CONWAYCONFIG.beat_offset_seconds = received_data.next_beat_time;
+            break;
         default:
             console.error("Unknown data" + received_data);
-            console.error("Unknown message" + received_data.message);
+            console.error("Unknown message " + received_data.message);
             break;
     }
 };
@@ -104,11 +101,10 @@ function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: O
         prerenderCanvas
     );
     field_drawer.updategameFieldWithShapesFromPreRender(currentConwayGame);
-    // field_drawer.displayGeneration(-1);
-
     let start: number = performance.now();
     let gameStateStart: number = start;
     let timeout_update_received = false;
+    let generation: number = -1;
     function draw_conway_game(timeStamp: number) {
         if (!currentConwayGame) {
             return;
@@ -118,10 +114,14 @@ function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: O
         }
         const elapsed = timeStamp - start;
         const elapsed_game_state = timeStamp - gameStateStart;
-        // field_drawer.displayGeneration(generation); // TODO posting back to dom
-        if (elapsed_game_state > CONWAYCONFIG.bpm_timeout_seconds * 1000) {
+        if (
+            elapsed_game_state >
+            (CONWAYCONFIG.bpm_timeout_seconds + CONWAYCONFIG.get_beat_offset_seconds(timeStamp)) *
+                1000
+        ) {
             gameStateStart = timeStamp;
             updateConwayGame();
+            CONWAYCONFIG.beat_offset_seconds = 0;
         }
         if (elapsed > 1000 / fps && timeout_update_received) {
             field_drawer.updategameFieldWithShapesFromPreRender(currentConwayGame);
@@ -129,7 +129,6 @@ function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: O
         }
         requestAnimationFrame((t) => draw_conway_game(t));
     }
-    let generation: number = -1;
     function updateConwayGame() {
         if (currentConwayGame) {
             currentConwayGame.nextState();

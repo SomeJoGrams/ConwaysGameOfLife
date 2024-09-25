@@ -1,6 +1,6 @@
 import printMe from "./print"; // for testing webpck
 import "../../resources/css/main.css";
-import { add_wallpaper_engine_audio_listening } from "./wallpaper_engine";
+import { add_wallpaper_engine_audio_listening, set_ui_worker } from "./wallpaper_engine";
 let gamefield_template = require("../../resources/html_templates/partials/game_field.hbs");
 let uiWorker: Worker | null = null;
 
@@ -90,9 +90,7 @@ function append_game_field_from_template() {
             });
         }
         add_wallpaper_engine_audio_listening();
-        // if (uiWorker) {
-        //     uiWorker.postMessage({message: "setColorAlive", rgba: [123,123,123,255]})  // TODO Continue hereuse a message channel
-        // }
+        set_ui_worker(uiWorker);
         printMe();
     });
 })();

@@ -5,13 +5,15 @@ class BPMDetector {
     private kept_entry_count: number = 50;
     private needed_difference: number;
     private max_bpm: number;
+    private bpm_changed: boolean;
 
-    constructor(default_bpm: number, needed_difference: number = 0.3, max_bpm = 200) {
+    constructor(default_bpm: number, needed_difference: number = 0.3, max_bpm = 240) {
         this.p_d = new PeakDetector();
         this.e_values = [];
         this.default_bpm = default_bpm;
         this.needed_difference = needed_difference;
         this.max_bpm = max_bpm;
+        this.bpm_changed = false;
     }
 
     public calculate_bpm(
@@ -32,7 +34,6 @@ class BPMDetector {
                 needed_difference
             );
         }
-        console.log("energy data %o at time_ms %d", large_energy_change, time_ms);
         this.e_values.push({
             is_beat: large_energy_change.is_peak,
             point_in_time_ms: time_ms,
@@ -46,6 +47,9 @@ class BPMDetector {
             return this.default_bpm;
         }
         const bpm = (1 * 60) / ((time_ms - last_beat.point_in_time_ms) / 1000);
+        if (bpm != this.default_bpm) {
+            this.bpm_changed = true;
+        }
         this.default_bpm = Math.min(bpm, this.max_bpm);
         return Math.min(bpm, this.max_bpm);
     }
@@ -71,12 +75,10 @@ class BPMDetector {
 
     private remove_old_entries() {
         if (this.e_values.length >= this.kept_entry_count) {
-            console.log("Removing old entries");
             // const filtered_peaks = this.e_values.filter((values, i, arr) => {
             //     return values.is_beat;
             // });
             let last_beat_index: number | undefined;
-            console.log("old %o", this.e_values);
             for (const [index, energy_value] of this.e_values.entries()) {
                 if (energy_value.is_beat) {
                     last_beat_index = index;
@@ -86,8 +88,25 @@ class BPMDetector {
                 last_beat_index = this.e_values.length - 1;
             }
             this.e_values = this.e_values.slice(last_beat_index, this.kept_entry_count);
-            console.log("new %o", this.e_values);
         }
+    }
+
+    public get_time_off_next_beat_if_bpm_changed(): number | null {
+        let last_beat_index: number | undefined = 0;
+        if (!this.bpm_changed) {
+            return null;
+        }
+        for (const [index, energy_value] of this.e_values.entries()) {
+            if (energy_value.is_beat) {
+                last_beat_index = index;
+            }
+        }
+        const e_value = this.e_values[last_beat_index];
+        if (e_value !== undefined) {
+            const seconds_per_beat = 60 / this.default_bpm;
+            return e_value.point_in_time_ms + seconds_per_beat;
+        }
+        return null;
     }
 }
 
@@ -112,7 +131,6 @@ class VolumeNormalizedBPMDetector extends BPMDetector {
     public calculate_bpm(time_ms: number, audio_data: number[]): number {
         // Doesn't work great because of internal rms
         const sum = audio_data.reduce((pre, cur_val, ind, arr) => pre + Math.min(cur_val, 1.0));
-        // console.log("sum %f", sum);
         const average = (sum + this.current_audio_average) / (audio_data.length + 1);
         const average_with_offset = average + (1 / 10) * this.current_audio_average;
         // TODO try out different normalization
@@ -120,7 +138,6 @@ class VolumeNormalizedBPMDetector extends BPMDetector {
             (val, i, arr) => val / average_with_offset
         );
         this.current_audio_average = average_with_offset;
-        // console.log("Calculated average %f", average_with_offset);
         // const needed_difference =
         //     this.average_relative_needed_difference * this.current_audio_average;
         const bpm = super.calculate_bpm(
@@ -221,13 +238,13 @@ class AudioArrayTool {
             );
         }
         const audio_data = audio_array.slice(start_channel, channel_count);
-        console.log("the audio data %o", audio_data);
         return audio_data;
     }
 }
 
 const bpm_detector = new VolumeNormalizedBPMDetector(80, 0.15);
 const audio_array_tool = new AudioArrayTool(68, 68);
+let ui_worker: Worker | undefined = undefined;
 let current_audio_data = 1;
 
 function wallpaperAudioListener(audioArray: number[]): void {
@@ -242,14 +259,18 @@ function wallpaperAudioListener(audioArray: number[]): void {
         Date.now(),
         audio_array_tool.getFromBassLeftAudioChannel(audioArray, 35, 15)
     );
-    console.log("current bpm: %d", bpm);
+    const next_beat: number | null = bpm_detector.get_time_off_next_beat_if_bpm_changed();
+    if (ui_worker != undefined) {
+        ui_worker.postMessage({ message: "bpmUpdate", bpm: bpm, nextBeatTime: next_beat });
+    }
+    console.log("current bpm: %d, next_beat time: %f", bpm, next_beat);
 }
 
-function add_wallpaper_engine_audio_listening() {
+function add_wallpaper_engine_audio_listening(uiWorker: Worker | undefined = undefined) {
     if (isRunningInWallpaperEngine() && "wallpaperRegisterAudioListener" in window) {
         console.log("adding audio listener");
         const audio_listener = window.wallpaperRegisterAudioListener as (
-            callback: (audioArray: number[]) => void
+            callback: (audioArray: number[], worker: Worker | undefined) => void
         ) => void;
         audio_listener(wallpaperAudioListener);
     } else {
@@ -257,4 +278,12 @@ function add_wallpaper_engine_audio_listening() {
     }
 }
 
-export { add_wallpaper_engine_audio_listening, PeakDetector, BPMDetector };
+function set_ui_worker(p_ui_worker: Worker | null) {
+    if (p_ui_worker == null) {
+        ui_worker = undefined;
+        return;
+    }
+    ui_worker = p_ui_worker;
+}
+
+export { set_ui_worker, add_wallpaper_engine_audio_listening, PeakDetector, BPMDetector };
