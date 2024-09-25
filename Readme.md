@@ -36,3 +36,4 @@ Open the dist index.html in a browser. Preferably on a self hosted server to avo
     * test dependencies for building
     * improve bpm recognition in wallpaper engine, e.g. by using multiple peak differences
     * add licensing
+    
