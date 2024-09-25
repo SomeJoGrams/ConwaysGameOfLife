@@ -79,7 +79,7 @@ function append_game_field_from_template() {
         let hiddenCanvas = document.createElement("canvas");
         canvas.style.width = "100vw";
         canvas.style.height = "100vh";
-        addMousePositionEventHandler();
+        // addMousePositionEventHandler();
         startWindowWorker(canvas, hiddenCanvas);
         if (uiWorker) {
             console.log("Posting Message For resolution");
