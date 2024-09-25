@@ -12,7 +12,7 @@ import {
     MousePositionHandler,
 } from "../main/game_of_life_default";
 
-let CONWAYCONFIG = new ConfigStorage();
+const CONWAYCONFIG = new ConfigStorage();
 self.onmessage = (event) => {
     console.debug("Worker received message " + event.data);
     let received_data:
@@ -113,14 +113,18 @@ function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: O
         }
         const elapsed = timeStamp - start;
         const elapsed_game_state = timeStamp - gameStateStart;
-        if (
-            elapsed_game_state >
+        const needed_time =
             (CONWAYCONFIG.bpm_timeout_seconds + CONWAYCONFIG.get_beat_offset_seconds(timeStamp)) *
-                1000
-        ) {
+            1000;
+        console.log(
+            "time %f, offset %f",
+            CONWAYCONFIG.bpm_timeout_seconds,
+            CONWAYCONFIG.get_beat_offset_seconds(timeStamp)
+        );
+        if (elapsed_game_state > needed_time) {
             gameStateStart = timeStamp;
             updateConwayGame();
-            CONWAYCONFIG.beat_offset_seconds = 0;
+            CONWAYCONFIG.beat_offset_seconds = null;
         }
         if (elapsed > 1000 / fps && timeout_update_received) {
             field_drawer.updategameFieldWithShapesFromPreRender(currentConwayGame);

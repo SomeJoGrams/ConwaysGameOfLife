@@ -1084,7 +1084,7 @@ class ConfigState {
         this._screen_ratio = screen_ratio;
         this._mousePositionHandler = null;
         this.game_settings_updated = false;
-        this._beat_offset_time_ms = 0;
+        this._beat_offset_time_ms = null;
     }
 
     get alive_cell_repr(): CellRepr {
@@ -1148,10 +1148,10 @@ class ConfigState {
     }
 
     public get_beat_offset_seconds(time_ms: number) {
-        if (this.beat_offset_seconds === null) {
+        if (this._beat_offset_time_ms === null) {
             return 0;
         }
-        const offset = time_ms - this.beat_offset_seconds;
+        const offset = time_ms - this._beat_offset_time_ms;
         return Math.max(0, offset);
     }
 
