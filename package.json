@@ -1,4 +1,8 @@
 {
+  "repository": {
+    "private": true,
+    "version": "0.0.1"
+  },
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",

@@ -6,6 +6,17 @@ As shorthand notion a conway world, where e.g. the basic rules are applied , can
 
 Some really nice complex shapes can follow from this simple rules already.
 
+## How to use
+
+See an example in the linked github page
+Open the dist index.html in a browser. Preferably on a self hosted server to avoid issues with cross site requests. Tested in Firefox 130.0.1
+
+## How to install for development
+
+* assuming npm is installed
+* run "npm ci"
+* Also tasks defined in the package.json can be used, e.g. jest for testing
+
 ## Remaining Ideas/ TODOs
 
     * Add randomization/movement to 'rule' position
@@ -23,4 +34,5 @@ Some really nice complex shapes can follow from this simple rules already.
     * Move messages to separate class
     * add hexagonal field
     * test dependencies for building
-    * add the generation
+    * improve bpm recognition in wallpaper engine, e.g. by using multiple peak differences
+    * add licensing
