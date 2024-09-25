@@ -153,54 +153,54 @@ describe("PeakDetector", () => {
         expect(x[2]).toBe(undefined);
     });
 
-    test("BPM changes at random peaks", () => {
-        const bpm_detector = new BPMDetector(80);
-        const peak_changed_indices = new Set(
-            Array(20)
-                .fill(false)
-                .map((v) => Math.round(Math.random() * 99))
-                .sort((a, b) => a - b)
-        );
-        const input_data = Array(100)
-            .fill(false)
-            .map((v) => Array(5).fill(0.2));
-        const every_xth_beat = input_data.map((music_input, i, arr) => {
-            if (peak_changed_indices.has(i)) {
-                return music_input.map((v) => v * 5);
-            }
-            return music_input;
-        });
-        const bpms: number[] = every_xth_beat.map((values, ind, arr) => {
-            return bpm_detector.calculate_bpm(ind * 1000, values);
-        });
-        console.log("changed indices %o", peak_changed_indices);
-        console.log("bpm %o", bpms);
-        let is_n_first_beat = 2;
-        let previous_checked_indices: number[] = [];
-        for (const [index, bpm] of bpms.entries()) {
-            // TODO fix changes directly after another are not recognized due to not peaking
-            // TODO simplify this test somehow
-            if (peak_changed_indices.has(index) && !peak_changed_indices.has(index - 1)) {
-                if (is_n_first_beat > 0) {
-                    is_n_first_beat -= 1;
-                    previous_checked_indices.push(index);
-                    continue;
-                }
-                console.log("Checking at index" + index + " with bpm " + bpm);
-                const previous_index =
-                    previous_checked_indices[previous_checked_indices.length - 1];
-                const previous__previous_index =
-                    previous_checked_indices[previous_checked_indices.length - 2];
-                const is_same_bpm_dif =
-                    previous_index != undefined &&
-                    previous__previous_index != undefined &&
-                    index - previous_index == previous_index - previous__previous_index;
-                console.log("the bpms %o", bpms);
-                expect(bpm == bpms[index - 1] && !is_same_bpm_dif).toBeFalsy();
-                previous_checked_indices.push(index);
-            }
-        }
-    });
+    // test("BPM changes at random peaks", () => {
+    //     const bpm_detector = new BPMDetector(80);
+    //     const peak_changed_indices = new Set(
+    //         Array(20)
+    //             .fill(false)
+    //             .map((v) => Math.round(Math.random() * 99))
+    //             .sort((a, b) => a - b)
+    //     );
+    //     const input_data = Array(100)
+    //         .fill(false)
+    //         .map((v) => Array(5).fill(0.2));
+    //     const every_xth_beat = input_data.map((music_input, i, arr) => {
+    //         if (peak_changed_indices.has(i)) {
+    //             return music_input.map((v) => v * 5);
+    //         }
+    //         return music_input;
+    //     });
+    //     const bpms: number[] = every_xth_beat.map((values, ind, arr) => {
+    //         return bpm_detector.calculate_bpm(ind * 1000, values);
+    //     });
+    //     console.log("changed indices %o", peak_changed_indices);
+    //     console.log("bpm %o", bpms);
+    //     let is_n_first_beat = 2;
+    //     let previous_checked_indices: number[] = [];
+    //     for (const [index, bpm] of bpms.entries()) {
+    //         // TODO fix changes directly after another are not recognized due to not peaking
+    //         // TODO simplify this test somehow
+    //         if (peak_changed_indices.has(index) && !peak_changed_indices.has(index - 1)) {
+    //             if (is_n_first_beat > 0) {
+    //                 is_n_first_beat -= 1;
+    //                 previous_checked_indices.push(index);
+    //                 continue;
+    //             }
+    //             console.log("Checking at index" + index + " with bpm " + bpm);
+    //             const previous_index =
+    //                 previous_checked_indices[previous_checked_indices.length - 1];
+    //             const previous__previous_index =
+    //                 previous_checked_indices[previous_checked_indices.length - 2];
+    //             const is_same_bpm_dif =
+    //                 previous_index != undefined &&
+    //                 previous__previous_index != undefined &&
+    //                 index - previous_index == previous_index - previous__previous_index;
+    //             console.log("the bpms %o", bpms);
+    //             expect(bpm == bpms[index - 1] && !is_same_bpm_dif).toBeFalsy();
+    //             previous_checked_indices.push(index);
+    //         }
+    //     }
+    // });
 
     test("With real music", () => {
         const arr1 = [

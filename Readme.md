@@ -14,7 +14,7 @@ Some really nice complex shapes can follow from this simple rules already.
     * Split files into view(ConwayFieldDisplayer/CellRepr) / state (ConwayGame)
     * Add a config menu (without wallpaper engine)
     * unify coding style, make everything snake case
-    * add shorthand notion for rules
+    * add shorthand notation for rules
     * write some more ui tests
     * remove (unused) code only used for testing typescript functionality
     * make color repr a function
@@ -23,3 +23,4 @@ Some really nice complex shapes can follow from this simple rules already.
     * Move messages to separate class
     * add hexagonal field
     * test dependencies for building
+    * add the generation
