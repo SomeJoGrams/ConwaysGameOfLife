@@ -425,10 +425,9 @@ class ConwayGameAdvancer extends ConwayGame {
 
     public nextState(): ConwayGame {
         for (const rule of this.generalRules) {
-            console.log("using general rule");
             rule.nextGameWithRule(this);
         }
-        super.nextState(); // Problem how to optimize memory within this hmmm
+        super.nextState();
         return this;
     }
 
