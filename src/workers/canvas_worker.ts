@@ -116,11 +116,6 @@ function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: O
         const needed_time =
             (CONWAYCONFIG.bpm_timeout_seconds + CONWAYCONFIG.get_beat_offset_seconds(timeStamp)) *
             1000;
-        console.log(
-            "time %f, offset %f",
-            CONWAYCONFIG.bpm_timeout_seconds,
-            CONWAYCONFIG.get_beat_offset_seconds(timeStamp)
-        );
         if (elapsed_game_state > needed_time) {
             gameStateStart = timeStamp;
             updateConwayGame();
