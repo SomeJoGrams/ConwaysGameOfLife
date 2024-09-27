@@ -99,19 +99,15 @@ function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: O
         null,
         prerenderCanvas
     );
-    field_drawer.updategameFieldWithShapesFromPreRender(currentConwayGame);
-    let start: number = performance.now();
-    let gameStateStart: number = start;
+    field_drawer.update_game_field_with_shapes_from_prerender(currentConwayGame);
+    let gameStateStart: number = Date.now();
     let timeout_update_received = false;
-    let generation: number = -1;
     function draw_conway_game(timeStamp: number) {
+        timeStamp = Date.now();
         if (!currentConwayGame) {
+            console.error("No Conway game was created");
             return;
         }
-        if (start == undefined) {
-            start = timeStamp;
-        }
-        const elapsed = timeStamp - start;
         const elapsed_game_state = timeStamp - gameStateStart;
         const needed_time =
             (CONWAYCONFIG.bpm_timeout_seconds + CONWAYCONFIG.get_beat_offset_seconds(timeStamp)) *
@@ -121,8 +117,8 @@ function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: O
             updateConwayGame();
             CONWAYCONFIG.beat_offset_seconds = null;
         }
-        if (elapsed > 1000 / fps && timeout_update_received) {
-            field_drawer.updategameFieldWithShapesFromPreRender(currentConwayGame);
+        if (timeout_update_received) {
+            field_drawer.update_game_field_with_shapes_from_prerender(currentConwayGame);
             timeout_update_received = false;
         }
         requestAnimationFrame((t) => draw_conway_game(t));
@@ -140,7 +136,6 @@ function start_conway_game_on_canvas(canvas: OffscreenCanvas, prerenderCanvas: O
             field_drawer
                 .preprender_bitmap(currentConwayGame)
                 .then((f) => (timeout_update_received = true));
-            generation += 1;
         }
     }
     requestAnimationFrame(draw_conway_game);

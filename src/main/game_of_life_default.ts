@@ -921,7 +921,7 @@ class ConwayHTMLDisplayer {
         return <ImageBitmap>this.nextCanvasBitMap;
     }
 
-    public updategameFieldWithShapesFromPreRender(
+    public update_game_field_with_shapes_from_prerender(
         conwayGame: ConwayGame,
         offsetX: number = 0,
         offsetY: number = 0
@@ -1156,6 +1156,7 @@ class ConfigState {
     }
 
     public get_beat_offset_seconds(time_ms: number) {
+        console.log("the offset ", this._beat_offset_time_ms);
         if (this._beat_offset_time_ms === null) {
             return 0;
         }

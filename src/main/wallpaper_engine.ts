@@ -40,10 +40,12 @@ class BPMDetector {
             energy: large_energy_change.value,
         });
         if (this.e_values.length < 2) {
+            this.bpm_changed = false;
             return this.default_bpm;
         }
         const last_beat = this.get_last_beat();
         if (last_beat == null || !large_energy_change.is_peak) {
+            this.bpm_changed = false;
             return this.default_bpm;
         }
         const bpm = (1 * 60) / ((time_ms - last_beat.point_in_time_ms) / 1000);
@@ -92,10 +94,10 @@ class BPMDetector {
     }
 
     public get_time_off_next_beat_if_bpm_changed(): number | null {
-        let last_beat_index: number | undefined = 0;
         if (!this.bpm_changed) {
             return null;
         }
+        let last_beat_index: number = 0;
         for (const [index, energy_value] of this.e_values.entries()) {
             if (energy_value.is_beat) {
                 last_beat_index = index;
@@ -153,6 +155,7 @@ class VolumeNormalizedBPMDetector extends BPMDetector {
         if ((time_ms - last_bpm.time_ms) / 1000 > this.beat_change_after_seconds) {
             this.last_bpms.push({ time_ms: time_ms, bpm: bpm });
         }
+        this.last_bpms = this.last_bpms.slice(0, 100);
         return last_bpm.bpm;
     }
 }
@@ -261,9 +264,9 @@ function wallpaperAudioListener(audioArray: number[]): void {
     );
     const next_beat: number | null = bpm_detector.get_time_off_next_beat_if_bpm_changed();
     if (ui_worker != undefined) {
-        ui_worker.postMessage({ message: "bpmUpdate", bpm: bpm, nextBeatTime: next_beat });
+        ui_worker.postMessage({ message: "bpmUpdate", bpm: bpm, next_beat_time: next_beat });
     }
-    console.log("current bpm: %d, next_beat time: %f", bpm, next_beat);
+    console.log("current bpm: %d, next beat time: %f", bpm, next_beat);
 }
 
 function add_wallpaper_engine_audio_listening(uiWorker: Worker | undefined = undefined) {
